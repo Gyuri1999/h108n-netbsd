@@ -1,0 +1,15 @@
+# build output
+obj/
+tftp/
+*.o
+*.elf
+*.bin
+*.ko
+__pycache__/
+
+# never commit these: they contain keys, credentials or vendor firmware
+*.log
+*flash*backup*.bin
+*flash*backup*.img
+*.sqsh
+*.key

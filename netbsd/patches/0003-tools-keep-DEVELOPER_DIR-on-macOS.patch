@@ -1,0 +1,17 @@
+diff --git a/tools/Makefile.gnuhost b/tools/Makefile.gnuhost
+index b3f5b3d03..04beccb6a 100644
+--- a/tools/Makefile.gnuhost
++++ b/tools/Makefile.gnuhost
+@@ -77,6 +77,12 @@ CONFIGURE_ENV+= \
+ 
+ BUILD_ENV+=	${CONFIGURE_ENV}
+ 
++# Darwin: keep the developer-dir override across the "env -i" used for
++# gmake-based host tools, so the host compiler shim keeps working.
++.if defined(DEVELOPER_DIR) && !empty(DEVELOPER_DIR)
++BUILD_ENV+=	DEVELOPER_DIR=${DEVELOPER_DIR:Q}
++.endif
++
+ CONFIGURE_ARGS+=--prefix=${TOOLDIR}
+ .if ${MKPIC} == "no"
+ CONFIGURE_ARGS+=--disable-shared

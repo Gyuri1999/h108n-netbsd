@@ -1,0 +1,1656 @@
+diff --git a/common/lib/libc/arch/mips/string/bcopy.S b/common/lib/libc/arch/mips/string/bcopy.S
+index d301185ef..fe7096ea9 100644
+--- a/common/lib/libc/arch/mips/string/bcopy.S
++++ b/common/lib/libc/arch/mips/string/bcopy.S
+@@ -179,6 +179,11 @@ LEAF(FUNCTION)
+ 	 *	Copy from unaligned source to aligned dest.
+ 	 */
+ 5:	# destaligned
++#ifdef __LEXRA__
++	/* Lexra cores have no lwl/lwr/swl/swr: copy bytewise instead. */
++	b		3b
++	nop
++#else
+ 	andi		t0,SIZEREG,(SZREG-1)	# t0 = bytecount mod SZREG
+ 	PTR_SUBU	a3,SIZEREG,t0		# number of words to transfer
+ 	beq		a3,zero,3b
+@@ -196,6 +201,7 @@ LEAF(FUNCTION)
+ 
+ 	b		3b
+ 	nop
++#endif /* __LEXRA__ */
+ 
+ 6:	# backcopy -- based on above
+ 	PTR_ADDU	SRCREG,SIZEREG
+@@ -275,6 +281,11 @@ LEAF(FUNCTION)
+ 	 *	Copy from unaligned source to aligned dest.
+ 	 */
+ 5:	# destaligned
++#ifdef __LEXRA__
++	/* Lexra cores have no lwl/lwr/swl/swr: copy bytewise instead. */
++	b		3b
++	nop
++#else
+ 	andi		t0,SIZEREG,SZREG-1	# t0 = bytecount mod 4
+ 	PTR_SUBU	a3,SIZEREG,t0		# number of words to transfer
+ 	beq		a3,zero,3b
+@@ -292,6 +303,7 @@ LEAF(FUNCTION)
+ 
+ 	b		3b
+ 	nop
++#endif /* __LEXRA__ */
+ 
+ 	.set	reorder
+ 	.set	at
+diff --git a/distrib/evbmips/rtl8672ramdisk/Makefile b/distrib/evbmips/rtl8672ramdisk/Makefile
+new file mode 100644
+index 000000000..b26bd000d
+--- /dev/null
++++ b/distrib/evbmips/rtl8672ramdisk/Makefile
+@@ -0,0 +1,38 @@
++#	$NetBSD$
++#
++# Small root file system for RTL8672 boards (ZTE ZXHN H108N): init, a
++# shell and a handful of tools in one crunched binary, meant to be put
++# into the kernel's memory disk with mdsetimage.
++
++.include <bsd.own.mk>
++.include "${NETBSDSRCDIR}/distrib/common/Makefile.distrib"
++
++IMAGE=		ramdisk.fs
++IMAGESIZE=	3072k
++MAKEFS_FLAGS+=	-f 15
++IMAGEENDIAN=	be
++
++WARNS=		1
++DBG=		-Os
++
++CRUNCHBIN=	ramdiskbin
++LISTS=		${.CURDIR}/list
++MTREECONF=	${DISTRIBDIR}/common/mtree.common
++IMAGEDEPENDS=	${CRUNCHBIN} \
++		dot.profile \
++		${NETBSDSRCDIR}/etc/group ${NETBSDSRCDIR}/etc/master.passwd
++
++MAKEDEVTARGETS=	std md0 ipty
++
++HACKSRC=	${DISTRIBDIR}/utils/libhack
++
++.include	"${HACKSRC}/Makefile.inc"
++${CRUNCHBIN}:	libhack.o
++
++.include "${DISTRIBDIR}/common/Makefile.crunch"
++.include "${DISTRIBDIR}/common/Makefile.makedev"
++.include "${DISTRIBDIR}/common/Makefile.image"
++
++release:
++
++.include <bsd.prog.mk>
+diff --git a/distrib/evbmips/rtl8672ramdisk/dot.profile b/distrib/evbmips/rtl8672ramdisk/dot.profile
+new file mode 100644
+index 000000000..8c712ff5d
+--- /dev/null
++++ b/distrib/evbmips/rtl8672ramdisk/dot.profile
+@@ -0,0 +1,27 @@
++# $NetBSD$
++#
++# Shell startup for the RTL8672 memory disk root.
++
++PATH=/sbin:/bin:/usr/bin:/usr/sbin:/
++export PATH
++TERM=vt100
++export TERM
++HOME=/
++export HOME
++
++umask 022
++
++if [ "X${DONEPROFILE}" = "X" ]; then
++	DONEPROFILE=YES
++	export DONEPROFILE
++
++	stty newcrt werase ^W intr ^C kill ^U erase ^?
++
++	# make the memory disk writable and show kernel state under /kern
++	mount -u /dev/md0a /
++	mount -t kernfs /kern /kern
++
++	echo ''
++	echo 'NetBSD on the ZTE ZXHN H108N (Realtek RTL8672, Lexra RLX5281)'
++	echo ''
++fi
+diff --git a/distrib/evbmips/rtl8672ramdisk/list b/distrib/evbmips/rtl8672ramdisk/list
+new file mode 100644
+index 000000000..7f4acffe4
+--- /dev/null
++++ b/distrib/evbmips/rtl8672ramdisk/list
+@@ -0,0 +1,38 @@
++#	$NetBSD$
++
++SRCDIRS	bin sbin usr.bin usr.sbin
++
++PROG	bin/cat
++PROG	bin/chmod
++PROG	bin/cp
++PROG	bin/date
++PROG	bin/dd
++PROG	bin/df
++PROG	bin/ln
++PROG	bin/ls
++PROG	bin/mkdir
++PROG	bin/mv
++PROG	bin/ps
++PROG	bin/pwd
++PROG	bin/rm
++PROG	bin/sh
++PROG	bin/stty
++PROG	bin/sync
++PROG	sbin/dmesg
++PROG	sbin/init
++PROG	sbin/mknod
++PROG	sbin/mount
++PROG	sbin/mount_ffs
++PROG	sbin/mount_kernfs
++PROG	sbin/newfs	sbin/mount_mfs
++PROG	sbin/reboot	sbin/halt
++PROG	sbin/sysctl
++PROG	sbin/umount
++
++LIBS	libhack.o -ledit -lutil -lcurses -lterminfo -lkvm -lcrypt -ll -lm -lprop
++
++ARGVLN	sh -sh
++
++COPY	${NETBSDSRCDIR}/etc/group		etc/group
++COPY	${NETBSDSRCDIR}/etc/master.passwd	etc/master.passwd
++COPY	${CURDIR}/dot.profile			.profile
+diff --git a/lib/libc/arch/mips/string/bcmp.S b/lib/libc/arch/mips/string/bcmp.S
+index c90fa2c36..9361d093a 100644
+--- a/lib/libc/arch/mips/string/bcmp.S
++++ b/lib/libc/arch/mips/string/bcmp.S
+@@ -58,12 +58,25 @@ LEAF(bcmp)
+ 
+ 	beq		a3, zero, 1f
+ 	PTR_SUBU	a2, a2, a3	# subtract from remaining count
++#ifdef __LEXRA__
++	/* Lexra cores have no lwl/lwr: compare the 1-3 bytes one at a time. */
++	PTR_ADDU	a3, a3, a0	# end of the unaligned head
++9:
++	lbu		v0, 0(a0)
++	lbu		v1, 0(a1)
++	PTR_ADDU	a0, a0, 1
++	bne		v0, v1, nomatch
++	PTR_ADDU	a1, a1, 1
++	bne		a0, a3, 9b
++	nop
++#else
+ 	move		v0, v1		# init v0,v1 so unmodified bytes match
+ 	LWHI		v0, 0(a0)	# read 1, 2, or 3 bytes
+ 	LWHI		v1, 0(a1)
+ 	PTR_ADDU	a1, a1, a3
+ 	bne		v0, v1, nomatch
+ 	PTR_ADDU	a0, a0, a3
++#endif /* __LEXRA__ */
+ 1:
+ 	and		a3, a2, ~3	# compute number of whole words left
+ 	PTR_SUBU	a2, a2, a3	#   which has to be >= (16-3) & ~3
+@@ -91,6 +104,9 @@ unaligned:
+ 	bne		a0, a3, 1b
+ 	nop
+ 2:
++#ifdef __LEXRA__
++	/* No lwl/lwr for the unaligned word loop: finish bytewise below. */
++#else
+ 	and		a3, a2, ~3	# compute number of whole words left
+ 	PTR_SUBU	a2, a2, a3	#   which has to be >= (16-3) & ~3
+ 	PTR_ADDU	a3, a3, a0	# compute ending address
+@@ -103,6 +119,7 @@ unaligned:
+ 	PTR_ADDU	a1, a1, 4
+ 	bne		a0, a3, 3b
+ 	nop
++#endif /* __LEXRA__ */
+ small:
+ 	ble		a2, zero, match
+ 	PTR_ADDU	a3, a2, a0		# compute ending address
+diff --git a/lib/libc/arch/mips/string/bzero.S b/lib/libc/arch/mips/string/bzero.S
+index f25c02055..4258b0d27 100644
+--- a/lib/libc/arch/mips/string/bzero.S
++++ b/lib/libc/arch/mips/string/bzero.S
+@@ -56,8 +56,17 @@ LEAF(bzero)
+ 	beq		a3, zero, 1f	# skip if word aligned
+ #if SZREG == 4
+ 	PTR_SUBU	a1, a1, a3	# subtract from remaining count
++#ifdef __LEXRA__
++	/* Lexra cores have no swl/swr: clear the 1-3 bytes one at a time. */
++	PTR_ADDU	a3, a3, a0	# end of the unaligned head
++9:
++	PTR_ADDU	a0, a0, 1
++	bne		a0, a3, 9b
++	sb		zero, -1(a0)
++#else
+ 	SWHI		zero, 0(a0)	# clear 1, 2, or 3 bytes to align
+ 	PTR_ADDU	a0, a0, a3
++#endif /* __LEXRA__ */
+ #endif
+ #if SZREG == 8
+ 	PTR_SUBU	a1, a1, a3	# subtract from remaining count
+diff --git a/sys/arch/evbmips/conf/RTL8672 b/sys/arch/evbmips/conf/RTL8672
+new file mode 100644
+index 000000000..8bddf0d29
+--- /dev/null
++++ b/sys/arch/evbmips/conf/RTL8672
+@@ -0,0 +1,39 @@
++# $NetBSD$
++#
++# RTL8672 -- Realtek RTL8672 based ADSL routers (ZTE ZXHN H108N).
++# First-light configuration: serial console only.
++
++include 	"arch/evbmips/conf/std.rtl8672"
++
++#ident 		"RTL8672-$Revision$"
++
++maxusers	4
++
++options 	MIPS1		# R3000-class core (Lexra RLX5281)
++options 	NOFPU		# No FPU
++options 	FPEMUL		# emulate FPU insn
++
++options 	HZ=100
++options 	MSGBUFSIZE=16384
++
++# Debugging
++options 	DIAGNOSTIC	# extra kernel sanity checking
++options 	DDB		# kernel dynamic debugger
++options 	DDB_HISTORY_SIZE=100
++
++# File systems
++file-system	FFS		# Berkeley Fast Filesystem
++file-system	MFS		# memory-based filesystem
++file-system	KERNFS		# kernel data-structure filesystem
++
++# Networking
++options 	INET		# Internet protocols
++
++config		netbsd		root on ? type ?
++
++mainbus0 	at root
++cpu* 		at mainbus?
++com*		at mainbus?
++
++pseudo-device	loop		# network loopback
++pseudo-device	pty		# pseudo-terminals
+diff --git a/sys/arch/evbmips/conf/RTL8672_MD b/sys/arch/evbmips/conf/RTL8672_MD
+new file mode 100644
+index 000000000..bb6fb01d0
+--- /dev/null
++++ b/sys/arch/evbmips/conf/RTL8672_MD
+@@ -0,0 +1,17 @@
++# $NetBSD$
++#
++# RTL8672_MD -- RTL8672 kernel with a root file system in a memory disk.
++# The image built in distrib/evbmips/rtl8672ramdisk is inserted with
++# mdsetimage; MEMORY_DISK_ROOT_SIZE (in 512-byte blocks) must cover it.
++
++include 	"arch/evbmips/conf/RTL8672"
++
++pseudo-device	md				# memory disk device
++options 	MEMORY_DISK_HOOKS
++options 	MEMORY_DISK_IS_ROOT		# force root on memory disk
++options 	MEMORY_DISK_SERVER=0		# no userspace memory disk
++options 	MEMORY_DISK_ROOT_SIZE=6144	# 3 MB
++
++# Print pc, address, cause and registers for every user-mode fault that
++# becomes a signal (sigdebug() in mips/trap.c).  Bring-up aid.
++makeoptions 	CPPFLAGS+="-DTRAP_SIGDEBUG"
+diff --git a/sys/arch/evbmips/conf/files.rtl8672 b/sys/arch/evbmips/conf/files.rtl8672
+new file mode 100644
+index 000000000..9f6b645e2
+--- /dev/null
++++ b/sys/arch/evbmips/conf/files.rtl8672
+@@ -0,0 +1,27 @@
++#	$NetBSD$
++
++file	arch/evbmips/rtl8672/autoconf.c
++file	arch/evbmips/rtl8672/machdep.c
++file	arch/evbmips/rtl8672/rtl8672_bus.c
++file	arch/evbmips/rtl8672/rtl8672_clock.c
++file	arch/evbmips/rtl8672/rtl8672_dma.c
++file	arch/evbmips/rtl8672/rtl8672_intr.c
++
++file	arch/evbmips/evbmips/interrupt.c
++
++file	arch/mips/mips/bus_dma.c
++
++# System bus
++device	mainbus {}
++attach	mainbus at root
++file	arch/evbmips/rtl8672/mainbus.c		mainbus
++
++device	cpu
++attach	cpu at mainbus
++file	arch/evbmips/evbmips/cpu.c		cpu
++
++attach	com at mainbus with com_mainbus
++file	arch/evbmips/rtl8672/com_mainbus.c	com_mainbus
++
++# Memory disk
++file	dev/md_root.c				memory_disk_hooks
+diff --git a/sys/arch/evbmips/conf/std.rtl8672 b/sys/arch/evbmips/conf/std.rtl8672
+new file mode 100644
+index 000000000..44144e79a
+--- /dev/null
++++ b/sys/arch/evbmips/conf/std.rtl8672
+@@ -0,0 +1,19 @@
++# $NetBSD$
++#
++# Standard options for boards built around the Realtek RTL8672 ADSL SoC
++# (Lexra RLX5281 core, big-endian MIPS-I without lwl/lwr/swl/swr).
++
++machine evbmips mips
++include		"conf/std"	# MI standard options
++
++options		EXEC_ELF32	# exec ELF32 binaries
++options		EXEC_SCRIPT	# exec #! scripts
++
++makeoptions	DEFTEXTADDR="0x80010000"
++makeoptions	BOARDTYPE="rtl8672"
++
++# -mlexra is a local GCC option: never emit lwl/lwr/swl/swr.
++# __LEXRA__ selects the matching paths in hand-written assembly.
++makeoptions	CPUFLAGS="-march=mips1 -mlexra -D__LEXRA__"
++
++include		"arch/evbmips/conf/files.rtl8672"
+diff --git a/sys/arch/evbmips/rtl8672/autoconf.c b/sys/arch/evbmips/rtl8672/autoconf.c
+new file mode 100644
+index 000000000..530cee6d5
+--- /dev/null
++++ b/sys/arch/evbmips/rtl8672/autoconf.c
+@@ -0,0 +1,42 @@
++/*	$NetBSD$	*/
++
++#include <sys/cdefs.h>
++__KERNEL_RCSID(0, "$NetBSD$");
++
++#include <sys/param.h>
++#include <sys/systm.h>
++#include <sys/conf.h>
++#include <sys/device.h>
++#include <sys/bus.h>
++#include <sys/intr.h>
++
++/*
++ * Configure all devices on system
++ */
++void
++cpu_configure(void)
++{
++
++	intr_init();
++
++	/* Kick off autoconfiguration. */
++	(void)splhigh();
++	if (config_rootfound("mainbus", NULL) == NULL)
++		panic("no mainbus found");
++
++	spl0();
++}
++
++void
++cpu_rootconf(void)
++{
++
++	rootconf();
++}
++
++void
++device_register(device_t dev, void *aux)
++{
++
++	/* nothing to do here */
++}
+diff --git a/sys/arch/evbmips/rtl8672/autoconf.h b/sys/arch/evbmips/rtl8672/autoconf.h
+new file mode 100644
+index 000000000..0bb8727f8
+--- /dev/null
++++ b/sys/arch/evbmips/rtl8672/autoconf.h
+@@ -0,0 +1,16 @@
++/*	$NetBSD$	*/
++
++#ifndef _EVBMIPS_RTL8672_AUTOCONF_H_
++#define _EVBMIPS_RTL8672_AUTOCONF_H_
++
++#include <sys/bus.h>
++
++struct mainbus_attach_args {
++	const char	*ma_name;
++	unsigned long	ma_addr;
++	int		ma_irq;
++	bus_space_tag_t	ma_iot;
++	bus_dma_tag_t	ma_dmat;
++};
++
++#endif /* _EVBMIPS_RTL8672_AUTOCONF_H_ */
+diff --git a/sys/arch/evbmips/rtl8672/com_mainbus.c b/sys/arch/evbmips/rtl8672/com_mainbus.c
+new file mode 100644
+index 000000000..ac81b6d56
+--- /dev/null
++++ b/sys/arch/evbmips/rtl8672/com_mainbus.c
+@@ -0,0 +1,71 @@
++/*	$NetBSD$	*/
++
++#include <sys/cdefs.h>
++__KERNEL_RCSID(0, "$NetBSD$");
++
++#include <sys/param.h>
++#include <sys/systm.h>
++#include <sys/device.h>
++#include <sys/kernel.h>
++#include <sys/tty.h>
++#include <sys/bus.h>
++#include <sys/intr.h>
++
++#include <dev/ic/comreg.h>
++#include <dev/ic/comvar.h>
++
++#include <evbmips/rtl8672/autoconf.h>
++#include <evbmips/rtl8672/rtl8672reg.h>
++#include <evbmips/rtl8672/rtl8672var.h>
++
++struct com_mainbus_softc {
++	struct	com_softc sc_com;	/* real "com" softc */
++	void	*sc_ih;			/* interrupt handler */
++};
++
++static int	com_mainbus_match(device_t, cfdata_t, void *);
++static void	com_mainbus_attach(device_t, device_t, void *);
++
++CFATTACH_DECL_NEW(com_mainbus, sizeof(struct com_mainbus_softc),
++    com_mainbus_match, com_mainbus_attach, NULL, NULL);
++
++static int
++com_mainbus_match(device_t parent, cfdata_t match, void *aux)
++{
++	struct mainbus_attach_args *ma = aux;
++
++	if (strcmp(ma->ma_name, match->cf_name) == 0)
++		return (1);
++
++	return (0);
++}
++
++static void
++com_mainbus_attach(device_t parent, device_t self, void *aux)
++{
++	struct com_mainbus_softc *msc = device_private(self);
++	struct com_softc *sc = &msc->sc_com;
++	struct mainbus_attach_args *ma = aux;
++	bus_space_handle_t ioh;
++
++	sc->sc_dev = self;
++	if (com_is_console(ma->ma_iot, ma->ma_addr, &ioh) == 0 &&
++	    bus_space_map(ma->ma_iot, ma->ma_addr,
++	    COM_NPORTS << RTL8672_UART_REGSHIFT, 0, &ioh) != 0) {
++		aprint_error(": can't map i/o space\n");
++		return;
++	}
++	com_init_regs_stride(&sc->sc_regs, ma->ma_iot, ioh, ma->ma_addr,
++	    RTL8672_UART_REGSHIFT);
++
++	sc->sc_frequency = rtl8672_configuration.rc_uart_freq;
++	sc->sc_type = COM_TYPE_NORMAL;
++
++	com_attach_subr(sc);
++
++	msc->sc_ih = evbmips_intr_establish(ma->ma_irq, comintr, sc);
++	if (msc->sc_ih == NULL) {
++		aprint_error_dev(self, "unable to establish interrupt\n");
++		return;
++	}
++}
+diff --git a/sys/arch/evbmips/rtl8672/machdep.c b/sys/arch/evbmips/rtl8672/machdep.c
+new file mode 100644
+index 000000000..78129b57e
+--- /dev/null
++++ b/sys/arch/evbmips/rtl8672/machdep.c
+@@ -0,0 +1,272 @@
++/*	$NetBSD$	*/
++
++/*
++ * Machine-dependent startup for Realtek RTL8672 boards (ZTE ZXHN H108N).
++ *
++ * The kernel is entered from the vendor Linux through a small loader
++ * module: it is copied to its link address and started with interrupts
++ * off.  Nothing is passed in registers.
++ */
++
++#include <sys/cdefs.h>
++__KERNEL_RCSID(0, "$NetBSD$");
++
++#include "opt_ddb.h"
++
++#include <sys/param.h>
++#include <sys/systm.h>
++#include <sys/boot_flag.h>
++#include <sys/bus.h>
++#include <sys/cpu.h>
++#include <sys/device.h>
++#include <sys/kcore.h>
++#include <sys/kernel.h>
++#include <sys/ksyms.h>
++#include <sys/mount.h>
++#include <sys/mutex.h>
++#include <sys/reboot.h>
++#include <sys/termios.h>
++
++#include <uvm/uvm_extern.h>
++
++#include <dev/cons.h>
++
++#include <dev/ic/comreg.h>
++#include <dev/ic/comvar.h>
++
++#if defined(DDB)
++#include <mips/db_machdep.h>
++#include <ddb/db_extern.h>
++#endif
++
++#include <mips/cache.h>
++#include <mips/locore.h>
++#include <mips/cpuregs.h>
++
++#include <evbmips/rtl8672/rtl8672reg.h>
++#include <evbmips/rtl8672/rtl8672var.h>
++
++/* Maps for VM objects. */
++struct vm_map *phys_map = NULL;
++
++struct rtl8672_config rtl8672_configuration;
++
++int mem_cluster_cnt;
++phys_ram_seg_t mem_clusters[VM_PHYSSEG_MAX];
++
++void	mach_init(u_long, u_long, u_long, u_long);
++
++#define	UART_REG(n)							\
++	(*(volatile uint8_t *)MIPS_PHYS_TO_KSEG1(RTL8672_UART0_BASE +	\
++	    ((n) << RTL8672_UART_REGSHIFT)))
++
++/*
++ * A very simple output-only console so that printf() works before the
++ * real console is initialised.
++ */
++static void
++early_putc(dev_t dev, int c)
++{
++	int timo = 1000000;
++
++	while ((UART_REG(com_lsr) & LSR_TXRDY) == 0 && --timo > 0)
++		continue;
++	UART_REG(com_data) = (uint8_t)c;
++}
++
++static void
++rtl8672_wbflush(void)
++{
++
++	/* nothing to drain */
++}
++
++static struct consdev early_console = {
++	.cn_putc = early_putc,
++	.cn_dev = makedev(0, 0),
++	.cn_pri = CN_DEAD
++};
++
++/*
++ * The UART reference clock is not documented.  Whoever started us left
++ * the port running at 115200 baud, so derive the clock from the divisor
++ * that is currently programmed.
++ */
++static u_int
++uart_probe_freq(void)
++{
++	uint8_t lcr;
++	u_int divisor;
++
++	lcr = UART_REG(com_lctl);
++	UART_REG(com_lctl) = lcr | LCR_DLAB;
++	divisor = UART_REG(com_dlbl) | (UART_REG(com_dlbh) << 8);
++	UART_REG(com_lctl) = lcr;
++
++	if (divisor == 0 || divisor == 0xffff)
++		return RTL8672_BUS_FREQ;
++	return divisor * 16 * RTL8672_UART_BAUD;
++}
++
++void
++mach_init(u_long arg0, u_long arg1, u_long arg2, u_long arg3)
++{
++	struct rtl8672_config *rcp = &rtl8672_configuration;
++	struct com_regs regs;
++	void *kernend;
++	extern char edata[], end[];	/* XXX */
++
++	/* The vendor system leaves the watchdog running. */
++	RTL8672_REG(RTL8672_WDTCNR) = RTL8672_WDT_STOP;
++
++	/* No device may interrupt until a handler is established. */
++	RTL8672_REG(RTL8672_GIMR) = 0;
++
++	kernend = (void *)mips_round_page(end);
++	memset(edata, 0, end - edata);
++
++	/* enough of a console for printf() to work */
++	cn_tab = &early_console;
++
++	cpu_setmodel("ZTE ZXHN H108N (Realtek RTL8672)");
++
++	mips_vector_init(NULL, false);
++
++	/*
++	 * The generic MIPS-I wbflush() spins on "bc0f", waiting for the
++	 * external write buffer of a real R3000.  This SoC has none, and
++	 * the Lexra core does not provide that condition.
++	 */
++	mips_set_wbflush(rtl8672_wbflush);
++
++	/* No CP0 counter on this core; these are nominal values. */
++	curcpu()->ci_cpu_freq = RTL8672_CPU_FREQ;
++	curcpu()->ci_cctr_freq = RTL8672_CPU_FREQ;
++	curcpu()->ci_cycles_per_hz = (RTL8672_CPU_FREQ + hz / 2) / hz;
++	curcpu()->ci_divisor_delay = (RTL8672_CPU_FREQ + 500000) / 1000000;
++
++	uvm_md_init();
++
++	/*
++	 * Initialize bus space tags and bring up the main console.
++	 */
++	rtl8672_bus_mem_init(&rcp->rc_memt, rcp);
++	rtl8672_dma_init(rcp);
++
++	rcp->rc_uart_freq = uart_probe_freq();
++	com_init_regs_stride(&regs, &rcp->rc_memt, 0, RTL8672_UART0_BASE,
++	    RTL8672_UART_REGSHIFT);
++	if (comcnattach1(&regs, RTL8672_UART_BAUD, rcp->rc_uart_freq,
++	    COM_TYPE_NORMAL,
++	    (TTYDEF_CFLAG & ~(CSIZE | PARENB)) | CS8) != 0)
++		panic("unable to initialize serial console");
++
++	printf("RTL8672: UART clock %u Hz\n", rcp->rc_uart_freq);
++
++	/* There is no way of passing arguments yet. */
++	boothowto = RB_AUTOBOOT;
++
++	physmem = btoc(RTL8672_RAM_SIZE);
++	mem_clusters[0].start = PAGE_SIZE;
++	mem_clusters[0].size = RTL8672_RAM_SIZE - PAGE_SIZE;
++	mem_cluster_cnt = 1;
++
++	/*
++	 * Load the available pages into the VM system.
++	 */
++	mips_page_physload(MIPS_KSEG0_START, (vaddr_t)kernend,
++	    mem_clusters, mem_cluster_cnt, NULL, 0);
++
++	/*
++	 * Initialize message buffer (at end of core).
++	 */
++	mips_init_msgbuf();
++
++	/*
++	 * Initialize the virtual memory system.
++	 */
++	pmap_bootstrap();
++
++	/*
++	 * Allocate uarea page for lwp0 and set it.
++	 */
++	mips_init_lwp0_uarea();
++
++#ifdef DDB
++	if (boothowto & RB_KDB)
++		Debugger();
++#endif
++}
++
++void
++consinit(void)
++{
++
++	/*
++	 * Everything related to console initialization is done
++	 * in mach_init().
++	 */
++}
++
++void
++cpu_startup(void)
++{
++
++	cpu_startup_common();
++	rtl8672_configuration.rc_mallocsafe = 1;
++}
++
++void
++cpu_reboot(int howto, char *bootstr)
++{
++	static int waittime = -1;
++
++	/* Take a snapshot before clobbering any registers. */
++	savectx(curpcb);
++
++	/* If "always halt" was specified as a boot flag, obey. */
++	if (boothowto & RB_HALT)
++		howto |= RB_HALT;
++
++	boothowto = howto;
++
++	/* If system is cold, just halt. */
++	if (cold) {
++		boothowto |= RB_HALT;
++		goto haltsys;
++	}
++
++	if ((boothowto & RB_NOSYNC) == 0 && waittime < 0) {
++		waittime = 0;
++		vfs_shutdown();
++	}
++
++	/* Disable interrupts. */
++	splhigh();
++
++	if (boothowto & RB_DUMP)
++		dumpsys();
++
++haltsys:
++	/* Run any shutdown hooks. */
++	doshutdownhooks();
++
++	if (boothowto & RB_HALT) {
++		printf("\n");
++		printf("The operating system has halted.\n");
++		printf("Please press any key to reboot.\n\n");
++		cnpollc(1);	/* For proper keyboard command handling */
++		cngetc();
++		cnpollc(0);
++	}
++
++	printf("resetting...\n\n");
++	delay(100000);
++
++	/* An immediately expiring watchdog resets the whole board. */
++	RTL8672_REG(RTL8672_WDTCNR) = RTL8672_WDT_RESET;
++
++	for (;;)
++		continue;
++	/*NOTREACHED*/
++}
+diff --git a/sys/arch/evbmips/rtl8672/mainbus.c b/sys/arch/evbmips/rtl8672/mainbus.c
+new file mode 100644
+index 000000000..e9ea99ace
+--- /dev/null
++++ b/sys/arch/evbmips/rtl8672/mainbus.c
+@@ -0,0 +1,74 @@
++/*	$NetBSD$	*/
++
++#include <sys/cdefs.h>
++__KERNEL_RCSID(0, "$NetBSD$");
++
++#include <sys/param.h>
++#include <sys/systm.h>
++#include <sys/device.h>
++#include <sys/bus.h>
++
++#include <mips/locore.h>
++
++#include <evbmips/rtl8672/autoconf.h>
++#include <evbmips/rtl8672/rtl8672reg.h>
++#include <evbmips/rtl8672/rtl8672var.h>
++
++static int	mainbus_match(device_t, cfdata_t, void *);
++static void	mainbus_attach(device_t, device_t, void *);
++static int	mainbus_print(void *, const char *);
++
++CFATTACH_DECL_NEW(mainbus, 0,
++    mainbus_match, mainbus_attach, NULL, NULL);
++
++/* There can be only one. */
++static int	mainbus_found;
++
++struct mainbusdev {
++	const char *md_name;
++	paddr_t md_addr;
++	int md_irq;
++};
++
++static const struct mainbusdev mainbusdevs[] = {
++	{ "cpu",	0,			-1			},
++	{ "com",	RTL8672_UART0_BASE,	RTL8672_IRQ_UART	},
++	{ NULL,		0,			-1			}
++};
++
++static int
++mainbus_match(device_t parent, cfdata_t match, void *aux)
++{
++
++	if (mainbus_found)
++		return (0);
++
++	return (1);
++}
++
++static void
++mainbus_attach(device_t parent, device_t self, void *aux)
++{
++	struct mainbus_attach_args maa;
++	struct rtl8672_config *rcp = &rtl8672_configuration;
++	const struct mainbusdev *md;
++
++	mainbus_found = 1;
++	printf("\n");
++
++	for (md = mainbusdevs; md->md_name != NULL; md++) {
++		maa.ma_name = md->md_name;
++		maa.ma_addr = md->md_addr;
++		maa.ma_irq = md->md_irq;
++		maa.ma_iot = &rcp->rc_memt;
++		maa.ma_dmat = &rcp->rc_dmat;
++		config_found(self, &maa, mainbus_print, CFARGS_NONE);
++	}
++}
++
++static int
++mainbus_print(void *aux, const char *pnp)
++{
++
++	return (QUIET);
++}
+diff --git a/sys/arch/evbmips/rtl8672/rtl8672_bus.c b/sys/arch/evbmips/rtl8672/rtl8672_bus.c
+new file mode 100644
+index 000000000..4f3452955
+--- /dev/null
++++ b/sys/arch/evbmips/rtl8672/rtl8672_bus.c
+@@ -0,0 +1,27 @@
++/*	$NetBSD$	*/
++
++/*
++ * Memory-mapped bus space for the RTL8672 on-chip peripherals.
++ */
++
++#include <sys/cdefs.h>
++__KERNEL_RCSID(0, "$NetBSD$");
++
++#include <sys/param.h>
++
++#include <evbmips/rtl8672/rtl8672reg.h>
++#include <evbmips/rtl8672/rtl8672var.h>
++
++#define	CHIP		rtl8672
++#define	CHIP_MEM	/* defined */
++
++#define	CHIP_EX_MALLOC_SAFE(v)	(((struct rtl8672_config *)(v))->rc_mallocsafe)
++#define	CHIP_EXTENT(v)		(((struct rtl8672_config *)(v))->rc_mem_ex)
++
++/* bus addresses are physical addresses */
++#define	CHIP_W1_BUS_START(v)	RTL8672_IO_BASE
++#define	CHIP_W1_BUS_END(v)	(RTL8672_IO_BASE + RTL8672_IO_SIZE - 1)
++#define	CHIP_W1_SYS_START(v)	CHIP_W1_BUS_START(v)
++#define	CHIP_W1_SYS_END(v)	CHIP_W1_BUS_END(v)
++
++#include <mips/mips/bus_space_alignstride_chipdep.c>
+diff --git a/sys/arch/evbmips/rtl8672/rtl8672_clock.c b/sys/arch/evbmips/rtl8672/rtl8672_clock.c
+new file mode 100644
+index 000000000..319652d0a
+--- /dev/null
++++ b/sys/arch/evbmips/rtl8672/rtl8672_clock.c
+@@ -0,0 +1,97 @@
++/*	$NetBSD$	*/
++
++/*
++ * Clock and delay support for the RTL8672.
++ *
++ * The Lexra core has no CP0 count/compare registers, so the system clock
++ * comes from on-chip timer 0 (set up in rtl8672_intr.c) and delay() is a
++ * loop that is calibrated against that timer.
++ */
++
++#include <sys/cdefs.h>
++__KERNEL_RCSID(0, "$NetBSD$");
++
++#include <sys/param.h>
++#include <sys/systm.h>
++#include <sys/cpu.h>
++#include <sys/kernel.h>
++
++#include <mips/locore.h>
++
++#include <evbmips/rtl8672/rtl8672reg.h>
++#include <evbmips/rtl8672/rtl8672var.h>
++
++void	rtl8672_clock_enable(void);
++
++/* Iterations of the delay loop per microsecond; a guess until calibrated. */
++static u_int rtl8672_delay_loops = 50;
++
++static inline void
++delay_loop(u_int n)
++{
++
++	while (n-- > 0)
++		__asm volatile("nop");
++}
++
++void
++delay(int n)
++{
++
++	while (n > 1000) {
++		delay_loop(1000 * rtl8672_delay_loops);
++		n -= 1000;
++	}
++	if (n > 0)
++		delay_loop(n * rtl8672_delay_loops);
++}
++
++/*
++ * Count delay loop iterations during one timer period (1/hz seconds).
++ * Runs with the timer already started and its interrupt masked.
++ */
++void
++rtl8672_delay_calibrate(void)
++{
++	const uint32_t ack = RTL8672_TCIR_TC0IE | RTL8672_TCIR_TC0IP;
++	u_int count = 0;
++	int guard;
++
++	/* Synchronise with a timer edge. */
++	RTL8672_REG(RTL8672_TCIR) = ack;
++	for (guard = 0; guard < 20000000; guard++) {
++		if (RTL8672_REG(RTL8672_TCIR) & RTL8672_TCIR_TC0IP)
++			break;
++	}
++	if (guard == 20000000) {
++		printf("rtl8672: timer not running, delay() uncalibrated\n");
++		return;
++	}
++	RTL8672_REG(RTL8672_TCIR) = ack;
++
++	while ((RTL8672_REG(RTL8672_TCIR) & RTL8672_TCIR_TC0IP) == 0) {
++		delay_loop(100);
++		count += 100;
++	}
++	RTL8672_REG(RTL8672_TCIR) = ack;
++
++	/* count iterations per 1/hz seconds */
++	rtl8672_delay_loops = count / (1000000 / hz);
++	if (rtl8672_delay_loops == 0)
++		rtl8672_delay_loops = 1;
++	printf("rtl8672: delay loop %u iterations/us\n", rtl8672_delay_loops);
++}
++
++void
++cpu_initclocks(void)
++{
++
++	rtl8672_clock_enable();
++}
++
++void
++setstatclockrate(int newhz)
++{
++
++	/* nothing: no separate statistics clock */
++}
+diff --git a/sys/arch/evbmips/rtl8672/rtl8672_dma.c b/sys/arch/evbmips/rtl8672/rtl8672_dma.c
+new file mode 100644
+index 000000000..cac0b0204
+--- /dev/null
++++ b/sys/arch/evbmips/rtl8672/rtl8672_dma.c
+@@ -0,0 +1,29 @@
++/*	$NetBSD$	*/
++
++#include <sys/cdefs.h>
++__KERNEL_RCSID(0, "$NetBSD$");
++
++#include <sys/param.h>
++#include <sys/device.h>
++
++#define	_MIPS_BUS_DMA_PRIVATE
++#include <sys/bus.h>
++
++#include <evbmips/rtl8672/rtl8672reg.h>
++#include <evbmips/rtl8672/rtl8672var.h>
++
++void
++rtl8672_dma_init(struct rtl8672_config *rcp)
++{
++	bus_dma_tag_t t;
++
++	t = &rcp->rc_dmat;
++	t->_cookie = rcp;
++	t->_wbase = 0;
++	t->_bounce_alloc_lo = 0;
++	t->_bounce_alloc_hi = RTL8672_RAM_SIZE;
++	t->_bounce_thresh = t->_bounce_alloc_hi;
++	t->_dmamap_ops = mips_bus_dmamap_ops;
++	t->_dmamem_ops = mips_bus_dmamem_ops;
++	t->_dmatag_ops = mips_bus_dmatag_ops;
++}
+diff --git a/sys/arch/evbmips/rtl8672/rtl8672_intr.c b/sys/arch/evbmips/rtl8672/rtl8672_intr.c
+new file mode 100644
+index 000000000..6c901675d
+--- /dev/null
++++ b/sys/arch/evbmips/rtl8672/rtl8672_intr.c
+@@ -0,0 +1,215 @@
++/*	$NetBSD$	*/
++
++/*
++ * Interrupt handling for the RTL8672.
++ *
++ * All on-chip sources go through one controller: GIMR masks them, GISR
++ * shows what is pending, and four routing registers steer each source to
++ * one of the CPU interrupt lines.  The layout of the routing registers is
++ * not documented, so the values of the vendor kernel are used as they are
++ * and the CPU line that the timer ends up on is found by experiment.  That
++ * line alone is left open at IPL_VM, which gives the clock its own level.
++ */
++
++#include <sys/cdefs.h>
++__KERNEL_RCSID(0, "$NetBSD$");
++
++#define __INTR_PRIVATE
++
++#include <sys/param.h>
++#include <sys/systm.h>
++#include <sys/bitops.h>
++#include <sys/cpu.h>
++#include <sys/device.h>
++#include <sys/intr.h>
++#include <sys/kernel.h>
++#include <sys/kmem.h>
++#include <sys/queue.h>
++
++#include <mips/locore.h>
++#include <mips/cpuregs.h>
++
++#include <evbmips/rtl8672/rtl8672reg.h>
++#include <evbmips/rtl8672/rtl8672var.h>
++
++struct intrhand {
++	LIST_ENTRY(intrhand) ih_q;
++	int (*ih_func)(void *);
++	void *ih_arg;
++	int ih_irq;
++};
++
++static LIST_HEAD(intrlist, intrhand) intrs[RTL8672_NIRQ];
++static struct evcnt rtl8672_clock_ev;
++static struct evcnt rtl8672_dev_ev;
++static struct evcnt rtl8672_stray_ev;
++
++/* CPU interrupt line(s) the timer is routed to (Cause/Status bits). */
++static uint32_t rtl8672_timer_line;
++
++static uint32_t
++rtl8672_probe_timer_line(void)
++{
++	uint32_t lines = 0;
++	int i;
++
++	/* Run the timer at hz with its interrupt enabled... */
++	RTL8672_REG(RTL8672_TCCNR) = 0;
++	RTL8672_REG(RTL8672_CDBR) = RTL8672_TIMER_DIV << 16;
++	RTL8672_REG(RTL8672_TC0DATA) =
++	    ((RTL8672_BUS_FREQ / RTL8672_TIMER_DIV) / hz) << 8;
++	RTL8672_REG(RTL8672_TCIR) = RTL8672_TCIR_TC0IE | RTL8672_TCIR_TC0IP;
++	RTL8672_REG(RTL8672_TCCNR) =
++	    RTL8672_TCCNR_TC0EN | RTL8672_TCCNR_TC0MODE;
++
++	/* ...let only the timer through the controller... */
++	RTL8672_REG(RTL8672_GIMR) = 1U << RTL8672_IRQ_TIMER;
++
++	/* ...and see which CPU line goes up when it fires. */
++	for (i = 0; i < 20000000; i++) {
++		if (RTL8672_REG(RTL8672_TCIR) & RTL8672_TCIR_TC0IP) {
++			lines = mips_cp0_cause_read() & MIPS_HARD_INT_MASK;
++			break;
++		}
++	}
++
++	RTL8672_REG(RTL8672_GIMR) = 0;
++	RTL8672_REG(RTL8672_TCIR) = RTL8672_TCIR_TC0IE | RTL8672_TCIR_TC0IP;
++
++	return lines;
++}
++
++void
++evbmips_intr_init(void)
++{
++	struct ipl_sr_map map;
++	int i;
++
++	for (i = 0; i < RTL8672_NIRQ; i++)
++		LIST_INIT(&intrs[i]);
++
++	RTL8672_REG(RTL8672_GIMR) = 0;
++	RTL8672_REG(RTL8672_IRR0) = RTL8672_IRR0_DEFAULT;
++	RTL8672_REG(RTL8672_IRR1) = RTL8672_IRR1_DEFAULT;
++	RTL8672_REG(RTL8672_IRR2) = RTL8672_IRR2_DEFAULT;
++	RTL8672_REG(RTL8672_IRR3) = RTL8672_IRR3_DEFAULT;
++
++	rtl8672_timer_line = rtl8672_probe_timer_line();
++	if (rtl8672_timer_line == 0) {
++		printf("rtl8672: timer interrupt line not found, "
++		    "assuming INT5\n");
++		rtl8672_timer_line = MIPS_INT_MASK_5;
++	} else {
++		printf("rtl8672: timer on CPU interrupt mask 0x%04x\n",
++		    rtl8672_timer_line);
++	}
++
++	memset(&map, 0, sizeof(map));
++	map.sr_bits[IPL_NONE] = 0;
++	map.sr_bits[IPL_SOFTCLOCK] = MIPS_SOFT_INT_MASK_0;
++	map.sr_bits[IPL_SOFTNET] = MIPS_SOFT_INT_MASK;
++	map.sr_bits[IPL_VM] = MIPS_SOFT_INT_MASK |
++	    (MIPS_HARD_INT_MASK & ~rtl8672_timer_line);
++	map.sr_bits[IPL_SCHED] = MIPS_INT_MASK;
++	map.sr_bits[IPL_DDB] = MIPS_INT_MASK;
++	map.sr_bits[IPL_HIGH] = MIPS_INT_MASK;
++	ipl_sr_map = map;
++
++	evcnt_attach_dynamic(&rtl8672_clock_ev, EVCNT_TYPE_INTR, NULL,
++	    "rtl8672", "clock");
++	evcnt_attach_dynamic(&rtl8672_dev_ev, EVCNT_TYPE_INTR, NULL,
++	    "rtl8672", "device");
++	evcnt_attach_dynamic(&rtl8672_stray_ev, EVCNT_TYPE_INTR, NULL,
++	    "rtl8672", "stray");
++
++	rtl8672_delay_calibrate();
++}
++
++void
++evbmips_iointr(int ipl, uint32_t ipending, struct clockframe *cf)
++{
++	uint32_t pending;
++
++	if (ipending & rtl8672_timer_line) {
++		/* Acknowledge, keeping the enable bit. */
++		RTL8672_REG(RTL8672_TCIR) =
++		    RTL8672_TCIR_TC0IE | RTL8672_TCIR_TC0IP;
++		rtl8672_clock_ev.ev_count++;
++		hardclock(cf);
++	}
++
++	if ((ipending & MIPS_HARD_INT_MASK & ~rtl8672_timer_line) == 0)
++		return;
++
++	pending = RTL8672_REG(RTL8672_GISR) & RTL8672_REG(RTL8672_GIMR) &
++	    ~(1U << RTL8672_IRQ_TIMER);
++	if (pending == 0) {
++		rtl8672_stray_ev.ev_count++;
++		return;
++	}
++
++	while (pending != 0) {
++		const int irq = ffs32(pending) - 1;
++		struct intrhand *ih;
++
++		pending &= ~(1U << irq);
++		rtl8672_dev_ev.ev_count++;
++		LIST_FOREACH(ih, &intrs[irq], ih_q) {
++			if (ih->ih_func != NULL)
++				(*ih->ih_func)(ih->ih_arg);
++		}
++	}
++}
++
++void *
++evbmips_intr_establish(int irq, int (*func)(void *), void *arg)
++{
++	struct intrhand *ih;
++	int s;
++
++	if (irq < 0 || irq >= RTL8672_NIRQ || irq == RTL8672_IRQ_TIMER) {
++		aprint_error("%s: invalid irq %d\n", __func__, irq);
++		return NULL;
++	}
++
++	ih = kmem_alloc(sizeof(*ih), KM_SLEEP);
++	ih->ih_func = func;
++	ih->ih_arg = arg;
++	ih->ih_irq = irq;
++
++	s = splhigh();
++	LIST_INSERT_HEAD(&intrs[irq], ih, ih_q);
++	RTL8672_REG(RTL8672_GIMR) |= 1U << irq;
++	splx(s);
++
++	return ih;
++}
++
++void
++evbmips_intr_disestablish(void *cookie)
++{
++	struct intrhand *ih = cookie;
++	int s;
++
++	s = splhigh();
++	LIST_REMOVE(ih, ih_q);
++	if (LIST_EMPTY(&intrs[ih->ih_irq]))
++		RTL8672_REG(RTL8672_GIMR) &= ~(1U << ih->ih_irq);
++	splx(s);
++
++	kmem_free(ih, sizeof(*ih));
++}
++
++/* Called from cpu_initclocks(): let the timer through. */
++void	rtl8672_clock_enable(void);
++
++void
++rtl8672_clock_enable(void)
++{
++	int s;
++
++	s = splhigh();
++	RTL8672_REG(RTL8672_TCIR) = RTL8672_TCIR_TC0IE | RTL8672_TCIR_TC0IP;
++	RTL8672_REG(RTL8672_GIMR) |= 1U << RTL8672_IRQ_TIMER;
++	splx(s);
++}
+diff --git a/sys/arch/evbmips/rtl8672/rtl8672reg.h b/sys/arch/evbmips/rtl8672/rtl8672reg.h
+new file mode 100644
+index 000000000..7e13f678e
+--- /dev/null
++++ b/sys/arch/evbmips/rtl8672/rtl8672reg.h
+@@ -0,0 +1,74 @@
++/*	$NetBSD$	*/
++
++/*
++ * Realtek RTL8672 on-chip peripherals.
++ *
++ * No documentation was available; every address and value here was read
++ * out of the vendor boot loader and Linux kernel of a ZTE ZXHN H108N and
++ * the ones marked (verified) were confirmed on the hardware.
++ */
++
++#ifndef _EVBMIPS_RTL8672_RTL8672REG_H_
++#define _EVBMIPS_RTL8672_RTL8672REG_H_
++
++#define	RTL8672_RAM_SIZE	(32 * 1024 * 1024)
++
++/* Peripheral window (physical addresses) */
++#define	RTL8672_IO_BASE		0x18000000
++#define	RTL8672_IO_SIZE		0x08000000
++
++/* 16550 UART, registers 4 bytes apart (verified) */
++#define	RTL8672_UART0_BASE	0x18002100
++#define	RTL8672_UART_REGSHIFT	2
++#define	RTL8672_UART_BAUD	115200
++
++/* Interrupt controller */
++#define	RTL8672_GIMR		0x18003000	/* global interrupt mask */
++#define	RTL8672_GISR		0x18003004	/* global interrupt status */
++#define	RTL8672_IRR0		0x18003008	/* routing, 4 bits/source */
++#define	RTL8672_IRR1		0x1800300c
++#define	RTL8672_IRR2		0x18003010
++#define	RTL8672_IRR3		0x18003014
++
++/* Routing values written by the vendor kernel */
++#define	RTL8672_IRR0_DEFAULT	0x22222202
++#define	RTL8672_IRR1_DEFAULT	0x65232227
++#define	RTL8672_IRR2_DEFAULT	0x22222222
++#define	RTL8672_IRR3_DEFAULT	0x22222222
++
++/* Interrupt sources (bit numbers in GIMR/GISR) */
++#define	RTL8672_IRQ_TIMER	8
++#define	RTL8672_IRQ_USB		10
++#define	RTL8672_IRQ_UART	13
++#define	RTL8672_IRQ_ETH		15
++#define	RTL8672_NIRQ		32
++
++/* Timers */
++#define	RTL8672_TC0DATA		0x18003100	/* reload value << 8 */
++#define	RTL8672_TC1DATA		0x18003104
++#define	RTL8672_TC0CNT		0x18003108
++#define	RTL8672_TC1CNT		0x1800310c
++#define	RTL8672_TCCNR		0x18003110	/* timer control */
++#define	RTL8672_TCIR		0x18003114	/* timer interrupts */
++#define	RTL8672_CDBR		0x18003118	/* clock divisor << 16 */
++#define	RTL8672_WDTCNR		0x1800311c	/* watchdog control */
++
++#define	RTL8672_TCCNR_TC0EN	0x80000000
++#define	RTL8672_TCCNR_TC0MODE	0x40000000	/* auto-reload */
++#define	RTL8672_TCIR_TC0IE	0x80000000
++#define	RTL8672_TCIR_TC0IP	0x20000000	/* write 1 to acknowledge */
++
++#define	RTL8672_WDT_STOP	0xa5000000	/* (verified) */
++#define	RTL8672_WDT_RESET	0x00000000	/* immediate reset */
++
++/* Peripheral bus clock: vendor kernel prints Div=1000, Data=2000 at HZ=100 */
++#define	RTL8672_BUS_FREQ	200000000
++#define	RTL8672_TIMER_DIV	1000
++
++/* Nominal core clock; only used for display and the pre-calibration delay */
++#define	RTL8672_CPU_FREQ	400000000
++
++#define	RTL8672_REG(pa)							\
++	(*(volatile uint32_t *)MIPS_PHYS_TO_KSEG1(pa))
++
++#endif /* _EVBMIPS_RTL8672_RTL8672REG_H_ */
+diff --git a/sys/arch/evbmips/rtl8672/rtl8672var.h b/sys/arch/evbmips/rtl8672/rtl8672var.h
+new file mode 100644
+index 000000000..2adbc1d6f
+--- /dev/null
++++ b/sys/arch/evbmips/rtl8672/rtl8672var.h
+@@ -0,0 +1,23 @@
++/*	$NetBSD$	*/
++
++#ifndef _EVBMIPS_RTL8672_RTL8672VAR_H_
++#define _EVBMIPS_RTL8672_RTL8672VAR_H_
++
++#include <sys/bus.h>
++#include <sys/extent.h>
++
++struct rtl8672_config {
++	struct mips_bus_space	rc_memt;
++	struct mips_bus_dma_tag	rc_dmat;
++	struct extent		*rc_mem_ex;
++	int			rc_mallocsafe;
++	u_int			rc_uart_freq;	/* UART reference clock */
++};
++
++extern struct rtl8672_config rtl8672_configuration;
++
++void	rtl8672_bus_mem_init(bus_space_tag_t, void *);
++void	rtl8672_dma_init(struct rtl8672_config *);
++void	rtl8672_delay_calibrate(void);
++
++#endif /* _EVBMIPS_RTL8672_RTL8672VAR_H_ */
+diff --git a/sys/arch/mips/conf/files.mips b/sys/arch/mips/conf/files.mips
+index 8fd944cc0..cd0d8635a 100644
+--- a/sys/arch/mips/conf/files.mips
++++ b/sys/arch/mips/conf/files.mips
+@@ -69,6 +69,7 @@ file	arch/mips/mips/wired_map.c (mips3|mips4|mips32|mips32r2|mips64|mips64r2) &
+ file	arch/mips/mips/cache.c
+ file	arch/mips/mips/cache_r3k.c		mips1
+ file	arch/mips/mips/cache_r3k_subr.S		mips1
++file	arch/mips/mips/cache_lexra.c		mips1
+ file	arch/mips/mips/cache_tx39.c		mips1 & enable_mips_tx3900
+ file	arch/mips/mips/cache_tx39_subr.S	mips1 & enable_mips_tx3900
+ file	arch/mips/mips/cache_ls2.c		mips3_loongson2
+diff --git a/sys/arch/mips/include/cache_lexra.h b/sys/arch/mips/include/cache_lexra.h
+new file mode 100644
+index 000000000..b2216f88f
+--- /dev/null
++++ b/sys/arch/mips/include/cache_lexra.h
+@@ -0,0 +1,27 @@
++/*	$NetBSD$	*/
++
++/*
++ * Cache operations for Lexra/Realtek RLX cores (e.g. RLX5281).
++ *
++ * These cores are MIPS-I compatible but do not implement the R3000
++ * "isolate cache" mechanism.  Caches are controlled through the CCTL
++ * register, coprocessor 0 register 20: an operation is started by a
++ * 0 -> 1 transition of its control bit.
++ */
++
++#ifndef _MIPS_CACHE_LEXRA_H_
++#define _MIPS_CACHE_LEXRA_H_
++
++#define	LEXRA_CCTL_DINVAL	0x00000001	/* invalidate D-cache */
++#define	LEXRA_CCTL_IINVAL	0x00000002	/* invalidate I-cache */
++#define	LEXRA_CCTL_DWB		0x00000100	/* write back D-cache */
++#define	LEXRA_CCTL_DWBINVAL	0x00000200	/* write back + invalidate D */
++
++#ifdef _KERNEL
++void	lexra_icache_sync_all(void);
++void	lexra_icache_sync_range(register_t, vsize_t);
++void	lexra_pdcache_wbinv_all(void);
++void	lexra_pdcache_wbinv_range(register_t, vsize_t);
++#endif
++
++#endif /* _MIPS_CACHE_LEXRA_H_ */
+diff --git a/sys/arch/mips/include/cpuregs.h b/sys/arch/mips/include/cpuregs.h
+index 4e78cf536..971401cce 100644
+--- a/sys/arch/mips/include/cpuregs.h
++++ b/sys/arch/mips/include/cpuregs.h
+@@ -943,6 +943,7 @@
+  */
+ #define	MIPS_R2000	0x01	/* MIPS R2000 			ISA I	*/
+ #define	MIPS_R3000	0x02	/* MIPS R3000 			ISA I	*/
++#define	MIPS_RLX5281	0xdc	/* Realtek (Lexra) RLX5281	ISA I	*/
+ #define	MIPS_R6000	0x03	/* MIPS R6000 			ISA II	*/
+ #define	MIPS_R4000	0x04	/* MIPS R4000/R4400 		ISA III */
+ #define	MIPS_R3LSI	0x05	/* LSI Logic R3000 derivative	ISA I	*/
+diff --git a/sys/arch/mips/mips/cache.c b/sys/arch/mips/mips/cache.c
+index 1ace757ca..dbf677a6a 100644
+--- a/sys/arch/mips/mips/cache.c
++++ b/sys/arch/mips/mips/cache.c
+@@ -82,6 +82,7 @@ __KERNEL_RCSID(0, "$NetBSD: cache.c,v 1.69 2022/03/13 17:50:55 andvar Exp $");
+ 
+ #ifdef MIPS1
+ #include <mips/cache_r3k.h>
++#include <mips/cache_lexra.h>
+ #endif
+ 
+ #ifdef MIPS3_PLUS
+@@ -295,6 +296,38 @@ mips_config_cache_prehistoric(void)
+ 		uvmexp.ncolors = atop(mci->mci_pdcache_size);
+ 		break;
+ 
++	case MIPS_RLX5281:
++		/*
++		 * Lexra cores have no R3000-style cache isolation; the
++		 * caches are flushed through the CCTL register (CP0 $20).
++		 * Sizes are those reported by the vendor kernel.
++		 */
++		mci->mci_picache_size = 16 * 1024;
++		mci->mci_pdcache_size = 8 * 1024;
++
++		mci->mci_picache_line_size = 16;
++		mci->mci_pdcache_line_size = 16;
++
++		mci->mci_picache_ways = 1;
++		mci->mci_pdcache_ways = 1;
++
++		mci->mci_pdcache_write_through = false;
++
++		mco->mco_icache_sync_all = lexra_icache_sync_all;
++		mco->mco_icache_sync_range = lexra_icache_sync_range;
++		mco->mco_icache_sync_range_index =
++		    (void (*)(vaddr_t, vsize_t)) mco->mco_icache_sync_range;
++
++		mco->mco_pdcache_wbinv_all = lexra_pdcache_wbinv_all;
++		mco->mco_pdcache_wbinv_range = lexra_pdcache_wbinv_range;
++		mco->mco_pdcache_wbinv_range_index =
++		    (void (*)(vaddr_t, vsize_t)) mco->mco_pdcache_wbinv_range;
++		mco->mco_pdcache_inv_range = lexra_pdcache_wbinv_range;
++		mco->mco_pdcache_wb_range = lexra_pdcache_wbinv_range;
++
++		uvmexp.ncolors = atop(mci->mci_pdcache_size);
++		break;
++
+ #ifdef ENABLE_MIPS_TX3900
+ 	case MIPS_TX3900:
+ 		switch (MIPS_PRID_REV_MAJ(cpu_id)) {
+diff --git a/sys/arch/mips/mips/cache_lexra.c b/sys/arch/mips/mips/cache_lexra.c
+new file mode 100644
+index 000000000..a531ddc4b
+--- /dev/null
++++ b/sys/arch/mips/mips/cache_lexra.c
+@@ -0,0 +1,82 @@
++/*	$NetBSD$	*/
++
++/*
++ * Cache operations for Lexra/Realtek RLX cores (e.g. RLX5281).
++ *
++ * The control bits and the "clear then set" sequence were taken from the
++ * behaviour of the vendor kernel: bit 1 of CCTL invalidates the I-cache,
++ * bit 9 writes back and invalidates the D-cache.  There are no per-line
++ * operations here; every request flushes the whole cache, which is slow
++ * but always correct.
++ */
++
++#include <sys/cdefs.h>
++__KERNEL_RCSID(0, "$NetBSD$");
++
++#include <sys/param.h>
++#include <sys/types.h>
++
++#include <mips/cpuregs.h>
++#include <mips/locore.h>
++#include <mips/cache.h>
++#include <mips/cache_lexra.h>
++
++static inline uint32_t
++lexra_cctl_read(void)
++{
++	uint32_t v;
++
++	__asm volatile("mfc0 %0, $20; nop" : "=r"(v));
++	return v;
++}
++
++static inline void
++lexra_cctl_write(uint32_t v)
++{
++
++	__asm volatile("mtc0 %0, $20; nop; nop" : : "r"(v));
++}
++
++/* Start a cache operation: its bit has to go from 0 to 1. */
++static void
++lexra_cctl_pulse(uint32_t bit)
++{
++	const uint32_t sr = mips_cp0_status_read();
++	uint32_t cctl;
++
++	mips_cp0_status_write(sr & ~MIPS_SR_INT_IE);
++	cctl = lexra_cctl_read() | bit;
++	lexra_cctl_write(cctl ^ bit);
++	lexra_cctl_write(cctl);
++	mips_cp0_status_write(sr);
++}
++
++void
++lexra_pdcache_wbinv_all(void)
++{
++
++	lexra_cctl_pulse(LEXRA_CCTL_DWBINVAL);
++}
++
++void
++lexra_pdcache_wbinv_range(register_t va, vsize_t size)
++{
++
++	lexra_cctl_pulse(LEXRA_CCTL_DWBINVAL);
++}
++
++void
++lexra_icache_sync_all(void)
++{
++
++	/* New instructions may still be sitting in the D-cache. */
++	lexra_cctl_pulse(LEXRA_CCTL_DWBINVAL);
++	lexra_cctl_pulse(LEXRA_CCTL_IINVAL);
++}
++
++void
++lexra_icache_sync_range(register_t va, vsize_t size)
++{
++
++	lexra_icache_sync_all();
++}
+diff --git a/sys/arch/mips/mips/mips_machdep.c b/sys/arch/mips/mips/mips_machdep.c
+index 771465ff8..9cf3eb8b4 100644
+--- a/sys/arch/mips/mips/mips_machdep.c
++++ b/sys/arch/mips/mips/mips_machdep.c
+@@ -298,6 +298,8 @@ static const struct pridtab cputab[] = {
+ 	  CPU_MIPS_NO_LLSC, 0, 0,		"MIPS R3000 CPU"	},
+ 	{ 0, MIPS_R3000, MIPS_REV_R3000A, -1,	CPU_ARCH_MIPS1, 64,
+ 	  CPU_MIPS_NO_LLSC, 0, 0,		"MIPS R3000A CPU"	},
++	{ 0, MIPS_RLX5281, -1, -1,		CPU_ARCH_MIPS1, 64,
++	  CPU_MIPS_NO_LLSC, 0, 0,		"Realtek RLX5281 (Lexra) CPU" },
+ 	{ 0, MIPS_R6000, -1, -1,		CPU_ARCH_MIPS2, 32,
+ 	  MIPS_NOT_SUPP, 0, 0,			"MIPS R6000 CPU"	},
+ 
+diff --git a/sys/arch/mips/mips/trap.c b/sys/arch/mips/mips/trap.c
+index 58caf19e2..e23937287 100644
+--- a/sys/arch/mips/mips/trap.c
++++ b/sys/arch/mips/mips/trap.c
+@@ -852,40 +852,40 @@ frame_dump(const struct trapframe *tf, struct pcb *pcb)
+ 
+ 	printf("trapframe %p\n", tf);
+ 	printf("ast %#018lx   v0 %#018lx   v1 %#018lx\n",
+-	    tf->tf_regs[_R_AST], tf->tf_regs[_R_V0], tf->tf_regs[_R_V1]);
++	    (unsigned long)tf->tf_regs[_R_AST], (unsigned long)tf->tf_regs[_R_V0], (unsigned long)tf->tf_regs[_R_V1]);
+ 	printf(" a0 %#018lx   a1 %#018lx   a2 %#018lx\n",
+-	    tf->tf_regs[_R_A0], tf->tf_regs[_R_A1], tf->tf_regs[_R_A2]);
++	    (unsigned long)tf->tf_regs[_R_A0], (unsigned long)tf->tf_regs[_R_A1], (unsigned long)tf->tf_regs[_R_A2]);
+ #if defined(__mips_n32) || defined(__mips_n64)
+ 	printf(" a3 %#018lx   a4  %#018lx  a5  %#018lx\n",
+-	    tf->tf_regs[_R_A3], tf->tf_regs[_R_A4], tf->tf_regs[_R_A5]);
++	    (unsigned long)tf->tf_regs[_R_A3], (unsigned long)tf->tf_regs[_R_A4], (unsigned long)tf->tf_regs[_R_A5]);
+ 	printf(" a6 %#018lx   a7  %#018lx  t0  %#018lx\n",
+-	    tf->tf_regs[_R_A6], tf->tf_regs[_R_A7], tf->tf_regs[_R_T0]);
++	    (unsigned long)tf->tf_regs[_R_A6], (unsigned long)tf->tf_regs[_R_A7], (unsigned long)tf->tf_regs[_R_T0]);
+ 	printf(" t1 %#018lx   t2  %#018lx  t3  %#018lx\n",
+-	    tf->tf_regs[_R_T1], tf->tf_regs[_R_T2], tf->tf_regs[_R_T3]);
++	    (unsigned long)tf->tf_regs[_R_T1], (unsigned long)tf->tf_regs[_R_T2], (unsigned long)tf->tf_regs[_R_T3]);
+ #else
+ 	printf(" a3 %#018lx   t0  %#018lx  t1  %#018lx\n",
+-	    tf->tf_regs[_R_A3], tf->tf_regs[_R_T0], tf->tf_regs[_R_T1]);
++	    (unsigned long)tf->tf_regs[_R_A3], (unsigned long)tf->tf_regs[_R_T0], (unsigned long)tf->tf_regs[_R_T1]);
+ 	printf(" t2 %#018lx   t3  %#018lx  t4  %#018lx\n",
+-	    tf->tf_regs[_R_T2], tf->tf_regs[_R_T3], tf->tf_regs[_R_T4]);
++	    (unsigned long)tf->tf_regs[_R_T2], (unsigned long)tf->tf_regs[_R_T3], (unsigned long)tf->tf_regs[_R_T4]);
+ 	printf(" t5 %#018lx   t6  %#018lx  t7  %#018lx\n",
+-	    tf->tf_regs[_R_T5], tf->tf_regs[_R_T6], tf->tf_regs[_R_T7]);
++	    (unsigned long)tf->tf_regs[_R_T5], (unsigned long)tf->tf_regs[_R_T6], (unsigned long)tf->tf_regs[_R_T7]);
+ #endif
+ 	printf(" s0 %#018lx   s1  %#018lx  s2  %#018lx\n",
+-	    tf->tf_regs[_R_S0], tf->tf_regs[_R_S1], tf->tf_regs[_R_S2]);
++	    (unsigned long)tf->tf_regs[_R_S0], (unsigned long)tf->tf_regs[_R_S1], (unsigned long)tf->tf_regs[_R_S2]);
+ 	printf(" s3 %#018lx   s4  %#018lx  s5  %#018lx\n",
+-	    tf->tf_regs[_R_S3], tf->tf_regs[_R_S4], tf->tf_regs[_R_S5]);
++	    (unsigned long)tf->tf_regs[_R_S3], (unsigned long)tf->tf_regs[_R_S4], (unsigned long)tf->tf_regs[_R_S5]);
+ 	printf(" s6 %#018lx   s7  %#018lx  t8  %#018lx\n",
+-	    tf->tf_regs[_R_S6], tf->tf_regs[_R_S7], tf->tf_regs[_R_T8]);
++	    (unsigned long)tf->tf_regs[_R_S6], (unsigned long)tf->tf_regs[_R_S7], (unsigned long)tf->tf_regs[_R_T8]);
+ 	printf(" t9 %#018lx   k0  %#018lx  k1  %#018lx\n",
+-	    tf->tf_regs[_R_T9], tf->tf_regs[_R_K0], tf->tf_regs[_R_K1]);
++	    (unsigned long)tf->tf_regs[_R_T9], (unsigned long)tf->tf_regs[_R_K0], (unsigned long)tf->tf_regs[_R_K1]);
+ 	printf(" gp %#018lx   sp  %#018lx  s8  %#018lx\n",
+-	    tf->tf_regs[_R_GP], tf->tf_regs[_R_SP], tf->tf_regs[_R_S8]);
++	    (unsigned long)tf->tf_regs[_R_GP], (unsigned long)tf->tf_regs[_R_SP], (unsigned long)tf->tf_regs[_R_S8]);
+ 	printf(" ra %#018lx   sr  %#018lx  pc  %#018lx\n",
+-	    tf->tf_regs[_R_RA], tf->tf_regs[_R_SR], tf->tf_regs[_R_PC]);
++	    (unsigned long)tf->tf_regs[_R_RA], (unsigned long)tf->tf_regs[_R_SR], (unsigned long)tf->tf_regs[_R_PC]);
+ 	printf(" mullo     %#018lx mulhi %#018lx\n",
+-	    tf->tf_regs[_R_MULLO], tf->tf_regs[_R_MULHI]);
++	    (unsigned long)tf->tf_regs[_R_MULLO], (unsigned long)tf->tf_regs[_R_MULHI]);
+ 	printf(" badvaddr  %#018lx cause %#018lx\n",
+-	    tf->tf_regs[_R_BADVADDR], tf->tf_regs[_R_CAUSE]);
++	    (unsigned long)tf->tf_regs[_R_BADVADDR], (unsigned long)tf->tf_regs[_R_CAUSE]);
+ 	printf("\n");
+ 	hexdump(printf, "Stack dump", tf, 256);
+ }
+@@ -896,11 +896,17 @@ sigdebug(const struct trapframe *tf, const ksiginfo_t *ksi, int e,
+ {
+ 	struct lwp *l = curlwp;
+ 	struct proc *p = l->l_proc;
++	static int sigdebug_count;
++
++	/* A looping process would otherwise bury the first, useful reports. */
++	if (sigdebug_count >= 6)
++		return;
++	sigdebug_count++;
+ 
+ 	printf("pid %d.%d (%s): signal %d code=%d (trap %#lx) "
+ 	    "@pc %#lx addr %#lx error=%d\n",
+ 	    p->p_pid, l->l_lid, p->p_comm, ksi->ksi_signo, ksi->ksi_code,
+-	    tf->tf_regs[_R_CAUSE], (unsigned long)pc, tf->tf_regs[_R_BADVADDR],
++	    (unsigned long)tf->tf_regs[_R_CAUSE], (unsigned long)pc, (unsigned long)tf->tf_regs[_R_BADVADDR],
+ 	    e);
+ 	frame_dump(tf, lwp_getpcb(l));
+ }

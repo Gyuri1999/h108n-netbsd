@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 430" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">How NetBSD is loaded on the H108N</title>
+  <desc id="d">A computer serves one file over TFTP. The router's stock Linux fetches it and loads it as a kernel module. The module finds the compressed kernel's pages, leaves Linux, and two small loader stages move and inflate the kernel, which then starts. The flash is never written.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7a6d63"/>
+    </marker>
+  </defs>
+  <rect width="920" height="430" rx="18" fill="#f6f1ea"/>
+
+  <!-- computer -->
+  <rect x="24" y="44" width="190" height="96" rx="14" fill="#fffdf9" stroke="#e6dccf" stroke-width="2"/>
+  <text x="119" y="78" text-anchor="middle" font-size="16" font-weight="700" fill="#2b2420">Your computer</text>
+  <text x="119" y="102" text-anchor="middle" font-size="13" fill="#7a6d63">TFTP server</text>
+  <text x="119" y="121" text-anchor="middle" font-size="13" fill="#7a6d63" font-family="ui-monospace, Menlo, monospace">h108nb.ko</text>
+
+  <!-- router outline -->
+  <rect x="262" y="20" width="634" height="330" rx="18" fill="none" stroke="#e07a3f" stroke-width="2" stroke-dasharray="7 6"/>
+  <text x="282" y="46" font-size="13" font-weight="700" fill="#e07a3f">ZTE ZXHN H108N &#8212; everything below happens in RAM</text>
+
+  <!-- stock linux -->
+  <rect x="286" y="62" width="270" height="96" rx="14" fill="#fffdf9" stroke="#e6dccf" stroke-width="2"/>
+  <text x="421" y="92" text-anchor="middle" font-size="16" font-weight="700" fill="#2b2420">Stock Linux 2.6.30</text>
+  <text x="421" y="115" text-anchor="middle" font-size="13" fill="#7a6d63">root shell over telnet</text>
+  <text x="421" y="136" text-anchor="middle" font-size="13" fill="#7a6d63" font-family="ui-monospace, Menlo, monospace">tftp -g &#8230;  &#8594;  insmod</text>
+
+  <!-- module -->
+  <rect x="602" y="62" width="270" height="96" rx="14" fill="#fbe6d8" stroke="#e07a3f" stroke-width="2"/>
+  <text x="737" y="92" text-anchor="middle" font-size="16" font-weight="700" fill="#2b2420">Loader module</text>
+  <text x="737" y="115" text-anchor="middle" font-size="13" fill="#7a6d63">finds the kernel's pages via the TLB,</text>
+  <text x="737" y="134" text-anchor="middle" font-size="13" fill="#7a6d63">interrupts off, leaves Linux</text>
+
+  <!-- stage 2a -->
+  <rect x="602" y="212" width="270" height="110" rx="14" fill="#fbe6d8" stroke="#e07a3f" stroke-width="2"/>
+  <text x="737" y="242" text-anchor="middle" font-size="16" font-weight="700" fill="#2b2420">Stage 2a</text>
+  <text x="737" y="263" text-anchor="middle" font-size="12" fill="#7a6d63" font-family="ui-monospace, Menlo, monospace">0x804C0000</text>
+  <text x="737" y="285" text-anchor="middle" font-size="13" fill="#7a6d63">gathers the compressed kernel,</text>
+  <text x="737" y="304" text-anchor="middle" font-size="13" fill="#7a6d63">moves it to the top of RAM</text>
+
+  <!-- stage 2b -->
+  <rect x="286" y="212" width="270" height="110" rx="14" fill="#fbe6d8" stroke="#e07a3f" stroke-width="2"/>
+  <text x="421" y="242" text-anchor="middle" font-size="16" font-weight="700" fill="#2b2420">Stage 2b</text>
+  <text x="421" y="263" text-anchor="middle" font-size="12" fill="#7a6d63" font-family="ui-monospace, Menlo, monospace">0x81F00000</text>
+  <text x="421" y="285" text-anchor="middle" font-size="13" fill="#7a6d63">inflates the kernel to its address,</text>
+  <text x="421" y="304" text-anchor="middle" font-size="13" fill="#7a6d63">flushes the caches, jumps</text>
+
+  <!-- netbsd -->
+  <rect x="24" y="212" width="190" height="110" rx="14" fill="#3f9b6b" stroke="#2f7a53" stroke-width="2"/>
+  <text x="119" y="248" text-anchor="middle" font-size="18" font-weight="700" fill="#ffffff">NetBSD 11</text>
+  <text x="119" y="271" text-anchor="middle" font-size="12" fill="#e9f6ee" font-family="ui-monospace, Menlo, monospace">0x80010000</text>
+  <text x="119" y="296" text-anchor="middle" font-size="13" fill="#e9f6ee">root shell on serial</text>
+
+  <!-- arrows -->
+  <g fill="none" stroke="#7a6d63" stroke-width="2.4" marker-end="url(#a)">
+    <path d="M214 96 H280"/>
+    <path d="M556 110 H596"/>
+    <path d="M737 158 V206"/>
+    <path d="M602 267 H562"/>
+    <path d="M286 267 H220"/>
+  </g>
+  <text x="240" y="82" text-anchor="middle" font-size="12" fill="#7a6d63">LAN</text>
+
+  <!-- footer note -->
+  <rect x="24" y="372" width="872" height="38" rx="12" fill="#fffdf9" stroke="#e6dccf" stroke-width="2"/>
+  <text x="460" y="396" text-anchor="middle" font-size="14" fill="#2b2420">The flash is never written. A power cycle brings the factory firmware back.</text>
+</svg>

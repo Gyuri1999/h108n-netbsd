@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>H108N NetBSD</title>
+<style>
+:root {
+  --bg: #f6f1ea; --panel: #fffdf9; --ink: #2b2420; --muted: #7a6d63; --line: #e6dccf;
+  --accent: #e07a3f; --accent-soft: #fbe6d8; --good: #3f9b6b; --warn: #c98a1b; --bad: #c8463c;
+  --fur: #f0a15c; --fur-dark: #c9743a; --belly: #fde9d2; --nose: #d9566b; --eye: #2b2420;
+  --console-bg: #1f1a17; --console-ink: #f1e7da; --radius: 16px;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #191513; --panel: #231d1a; --ink: #f3e9de; --muted: #a8998c; --line: #3a302a;
+    --accent: #f0935a; --accent-soft: #3b2a20; --good: #5fc08c; --warn: #e2ad4a; --bad: #ee6f63;
+    --fur: #e89b5a; --fur-dark: #b9652f; --belly: #f6dcc0; --eye: #1b1512;
+    --console-bg: #120f0d; --console-ink: #f1e7da;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #191513; --panel: #231d1a; --ink: #f3e9de; --muted: #a8998c; --line: #3a302a;
+  --accent: #f0935a; --accent-soft: #3b2a20; --good: #5fc08c; --warn: #e2ad4a; --bad: #ee6f63;
+  --fur: #e89b5a; --fur-dark: #b9652f; --belly: #f6dcc0; --eye: #1b1512;
+  --console-bg: #120f0d; --console-ink: #f1e7da;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+h1 { font-size: 20px; margin: 0; letter-spacing: .2px; }
+h1 small { color: var(--muted); font-weight: 500; font-size: 14px; margin-left: 6px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+.spacer { flex: 1; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--line); font-size: 13px; white-space: nowrap; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.dot.good { background: var(--good); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
+button { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 6px 12px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.danger:hover { border-color: var(--bad); color: var(--bad); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:disabled:hover { border-color: var(--line); color: inherit; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+
+/* ---- the cat ---- */
+.hero { display: grid; grid-template-columns: 230px 1fr; gap: 18px; align-items: center; margin-bottom: 16px; }
+.cat { width: 100%; max-width: 230px; height: auto; display: block; margin: 0 auto; overflow: visible; }
+.cat .fur { fill: var(--fur); } .cat .dark { fill: var(--fur-dark); } .cat .belly { fill: var(--belly); }
+.cat .nose { fill: var(--nose); } .cat .ink { stroke: var(--eye); fill: none; stroke-width: 3.2; stroke-linecap: round; }
+.cat .pupil { fill: var(--eye); } .cat .white { fill: #fff; }
+.cat .whisk { stroke: var(--eye); stroke-width: 1.6; stroke-linecap: round; opacity: .55; }
+.cat .tail { fill: none; stroke: var(--fur-dark); stroke-width: 15; stroke-linecap: round;
+  transform-origin: 196px 196px; animation: wag 3.2s ease-in-out infinite; }
+.cat .extra, .cat .eyes > g { display: none; }
+.cat .spikes { display: none; fill: var(--fur-dark); }
+.cat .body-all { transform-origin: 130px 215px; }
+@keyframes wag { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(13deg); } }
+@keyframes breathe { 0%,100% { transform: scale(1,1); } 50% { transform: scale(1.02,.975); } }
+@keyframes floaty { 0% { opacity: 0; transform: translateY(6px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-16px); } }
+@keyframes shiver { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-1.6px); } 75% { transform: translateX(1.6px); } }
+[data-mood="sleep"] .eyes .closed, [data-mood="sleep"] .zzz { display: block; }
+[data-mood="sleep"] .body-all { animation: breathe 3.6s ease-in-out infinite; }
+[data-mood="sleep"] .tail { animation-duration: 6s; }
+[data-mood="wake"] .eyes .half { display: block; }
+[data-mood="alert"] .eyes .open { display: block; }
+[data-mood="alert"] .tail { animation-duration: .9s; }
+[data-mood="happy"] .eyes .smile, [data-mood="happy"] .hearts { display: block; }
+[data-mood="happy"] .body-all { animation: breathe 1.6s ease-in-out infinite; }
+[data-mood="puff"] .eyes .wide, [data-mood="puff"] .spikes, [data-mood="puff"] .bang { display: block; }
+[data-mood="puff"] .body-all { animation: shiver .18s linear infinite; }
+[data-mood="puff"] .tail { stroke-width: 24; animation-duration: .5s; }
+.zzz text, .hearts text, .bang text { font: 700 22px sans-serif; fill: var(--accent); animation: floaty 2.6s ease-out infinite; }
+.zzz text:nth-child(2), .hearts text:nth-child(2) { animation-delay: .9s; }
+.zzz text:nth-child(3), .hearts text:nth-child(3) { animation-delay: 1.8s; }
+@media (prefers-reduced-motion: reduce) { .cat * { animation: none !important; } }
+.bubble { position: relative; background: var(--accent-soft); border-radius: 18px; padding: 14px 18px; font-size: 17px; }
+.bubble::before { content: ""; position: absolute; left: -9px; top: 26px; width: 18px; height: 18px;
+  background: var(--accent-soft); transform: rotate(45deg); border-radius: 3px; }
+.bubble b { display: block; font-size: 20px; margin-bottom: 2px; }
+.bubble span { color: var(--muted); font-size: 14px; }
+
+/* ---- boot path ---- */
+.path { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 14px; }
+.step { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; background: var(--panel); min-width: 0; }
+.step .n { font-size: 12px; color: var(--muted); } .step .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.step .paw { float: right; opacity: .25; font-size: 16px; }
+.step.done { border-color: var(--good); } .step.done .paw { opacity: 1; }
+.step.now { border-color: var(--accent); background: var(--accent-soft); } .step.now .paw { opacity: 1; }
+
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 14px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.big { font-size: 28px; font-weight: 700; line-height: 1.1; } .big small { font-size: 14px; color: var(--muted); font-weight: 500; }
+.bar { height: 10px; background: var(--line); border-radius: 999px; overflow: hidden; margin: 8px 0 6px; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; width: 0; transition: width .5s; }
+.note { color: var(--muted); font-size: 13px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+td.num { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+.two { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; margin-bottom: 14px; }
+
+/* ---- console ---- */
+#console { background: var(--console-bg); color: var(--console-ink); font: 12.5px/1.45 var(--mono);
+  border-radius: 12px; padding: 12px; height: 360px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.cmd { display: flex; gap: 8px; margin-top: 10px; }
+.cmd input { flex: 1; min-width: 0; font: 13px var(--mono); padding: 8px 10px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.quick button { font: 12.5px var(--mono); padding: 4px 9px; }
+ul.ideas { margin: 0; padding-left: 18px; } ul.ideas li { margin: 4px 0; }
+ul.ideas li::marker { content: "🐾  "; }
+.tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); margin-left: 6px; }
+footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 22px; }
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; } .bubble::before { display: none; }
+  .grid, .two { grid-template-columns: 1fr; } .path { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>H108N <small>NetBSD στο router</small></h1>
+    <span class="spacer"></span>
+    <span class="pill"><span class="dot" id="serialDot"></span><span id="serialText">σειριακή…</span></span>
+    <span class="pill"><span class="dot" id="stageDot"></span><span id="stageText">—</span></span>
+    <button id="themeBtn" title="Φωτεινό / σκοτεινό">◐</button>
+  </header>
+
+  <section class="panel hero" id="hero" data-mood="sleep">
+    <svg class="cat" viewBox="0 0 260 260" role="img" aria-label="Η γάτα του router">
+      <path class="tail" d="M196 196 C 236 196, 244 150, 222 132"/>
+      <g class="body-all">
+        <g class="spikes">
+          <path d="M58 118 l-20 -6 l18 14z M60 150 l-24 4 l22 8z M72 86 l-14 -18 l22 10z M188 86 l14 -18 l-22 10z M202 118 l20 -6 l-18 14z M200 150 l24 4 l-22 8z M108 62 l-4 -20 l14 16z M152 62 l4 -20 l-14 16z"/>
+        </g>
+        <ellipse class="fur" cx="130" cy="200" rx="74" ry="46"/>
+        <ellipse class="belly" cx="130" cy="210" rx="44" ry="28"/>
+        <path class="fur" d="M72 92 L66 34 L112 66 Z"/><path class="fur" d="M188 92 L194 34 L148 66 Z"/>
+        <path class="belly" d="M80 74 L77 48 L99 64 Z"/><path class="belly" d="M180 74 L183 48 L161 64 Z"/>
+        <circle class="fur" cx="130" cy="112" r="66"/>
+        <path class="dark" d="M118 50 q12 14 24 0 q-6 22 -12 22 q-6 0 -12 -22z"/>
+        <ellipse class="belly" cx="130" cy="138" rx="30" ry="22"/>
+        <g class="eyes">
+          <g class="closed"><path class="ink" d="M90 108 q12 9 24 0"/><path class="ink" d="M146 108 q12 9 24 0"/></g>
+          <g class="half"><ellipse class="white" cx="102" cy="108" rx="13" ry="8"/><ellipse class="white" cx="158" cy="108" rx="13" ry="8"/>
+            <circle class="pupil" cx="102" cy="109" r="5"/><circle class="pupil" cx="158" cy="109" r="5"/>
+            <path class="ink" d="M88 102 h28"/><path class="ink" d="M144 102 h28"/></g>
+          <g class="open"><ellipse class="white" cx="102" cy="106" rx="13" ry="14"/><ellipse class="white" cx="158" cy="106" rx="13" ry="14"/>
+            <ellipse class="pupil" cx="102" cy="106" rx="5" ry="11"/><ellipse class="pupil" cx="158" cy="106" rx="5" ry="11"/></g>
+          <g class="smile"><path class="ink" d="M90 110 q12 -13 24 0"/><path class="ink" d="M146 110 q12 -13 24 0"/></g>
+          <g class="wide"><circle class="white" cx="102" cy="104" r="17"/><circle class="white" cx="158" cy="104" r="17"/>
+            <circle class="pupil" cx="102" cy="104" r="5"/><circle class="pupil" cx="158" cy="104" r="5"/></g>
+        </g>
+        <path class="nose" d="M123 128 h14 l-7 8z"/>
+        <path class="ink" d="M130 136 v5 M130 141 q-7 7 -13 1 M130 141 q7 7 13 1" style="stroke-width:2.4"/>
+        <path class="whisk" d="M96 132 H58 M96 140 L60 148 M164 132 H202 M164 140 L200 148"/>
+        <ellipse class="belly" cx="98" cy="240" rx="18" ry="10"/><ellipse class="belly" cx="162" cy="240" rx="18" ry="10"/>
+      </g>
+      <g class="extra zzz"><text x="196" y="74">z</text><text x="212" y="54">z</text><text x="228" y="34">Z</text></g>
+      <g class="extra hearts"><text x="200" y="70">♥</text><text x="34" y="64">♥</text><text x="218" y="40">♥</text></g>
+      <g class="extra bang"><text x="208" y="56">!</text></g>
+    </svg>
+    <div>
+      <div class="bubble"><b id="catTitle">Νιάου…</b><span id="catLine">Περιμένω να ακούσω κάτι από τη σειριακή.</span></div>
+      <div class="path" id="path"></div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="panel"><h2>Σύστημα</h2>
+      <dl class="kv"><dt>Μοντέλο</dt><dd id="iModel">—</dd><dt>Λειτουργικό</dt><dd id="iOs">—</dd>
+        <dt>Αρχιτεκτονική</dt><dd id="iArch">—</dd><dt>Root</dt><dd id="iRoot">—</dd></dl>
+      <p class="note" id="iKernel"></p></div>
+    <div class="panel"><h2>Επεξεργαστής</h2>
+      <dl class="kv"><dt>Πυρήνας</dt><dd id="iCpu">—</dd><dt>Cache εντολών</dt><dd id="iIc">—</dd>
+        <dt>Cache δεδομένων</dt><dd id="iDc">—</dd><dt>Timer</dt><dd id="iTimer">—</dd></dl></div>
+    <div class="panel"><h2>Χρόνος λειτουργίας</h2>
+      <div class="big" id="iUp">—</div><p class="note" id="iUpNote">Όπως τον μετράει το ρολόι του router.</p></div>
+    <div class="panel"><h2>Μνήμη</h2>
+      <div class="big"><span id="iMemAvail">—</span> <small id="iMemTotal"></small></div>
+      <div class="bar"><i id="iMemBar"></i></div><p class="note">Διαθέσιμη στο NetBSD μετά την εκκίνηση, από τα 32 MB.</p></div>
+    <div class="panel"><h2>Δίσκος root (μνήμη)</h2>
+      <div class="big"><span id="iDiskUsed">—</span> <small id="iDiskTotal"></small></div>
+      <div class="bar"><i id="iDiskBar"></i></div><p class="note" id="iDiskNote">Ζει στη RAM· χάνεται σε κάθε επανεκκίνηση.</p></div>
+    <div class="panel"><h2>Διεργασίες</h2>
+      <div class="big" id="iProcN">—</div><p class="note" id="iAge">Χωρίς στοιχεία ακόμα.</p></div>
+  </section>
+
+  <section class="two">
+    <div class="panel"><h2>Κονσόλα (σειριακή)</h2>
+      <pre id="console" tabindex="0"></pre>
+      <form class="cmd" id="cmdForm"><input id="cmdInput" autocomplete="off" spellcheck="false" placeholder="εντολή για το router…" aria-label="Εντολή">
+        <button class="primary" type="submit">Στείλε</button></form>
+      <div class="quick" id="quick"></div>
+    </div>
+    <div class="panel"><h2>Τι τρέχει τώρα</h2>
+      <table><thead><tr><th>PID</th><th>Κατ.</th><th>Χρόνος</th><th>Εντολή</th></tr></thead><tbody id="procs"><tr><td colspan="4" class="note">—</td></tr></tbody></table>
+      <div class="quick" style="margin-top:14px"><button id="refreshBtn">Ανανέωση στοιχείων</button><button class="danger" id="rebootBtn">Επανεκκίνηση router</button></div>
+      <p class="note" id="rebootNote"></p>
+    </div>
+  </section>
+
+  <section class="two">
+    <div class="panel"><h2>Χάρτης hardware</h2>
+      <table><thead><tr><th>Τι</th><th>Διεύθυνση</th><th>Σημείωση</th></tr></thead><tbody>
+        <tr><td>Σειριακή (16550)</td><td class="num">0xB8002100</td><td>115200 baud, IRQ 13</td></tr>
+        <tr><td>Μάσκα interrupts</td><td class="num">0xB8003000</td><td>κατάσταση στο +4, δρομολόγηση +8…+14</td></tr>
+        <tr><td>Timer 0</td><td class="num">0xB8003100</td><td>IRQ 8, γραμμή 7 του επεξεργαστή, 100 Hz</td></tr>
+        <tr><td>Watchdog</td><td class="num">0xB800311C</td><td>0xA5000000 σταματά, 0 επανεκκινεί</td></tr>
+        <tr><td>Flash SPI 8 MB</td><td class="num">0xBD000000</td><td>ανέγγιχτο· κρατάει το εργοστασιακό firmware</td></tr>
+        <tr><td>Ethernet</td><td class="num">IRQ 15</td><td>χωρίς οδηγό ακόμα</td></tr>
+        <tr><td>USB</td><td class="num">0xB8020000</td><td>OHCI/EHCI, IRQ 10, χωρίς οδηγό ακόμα</td></tr>
+      </tbody></table></div>
+    <div class="panel"><h2>Ιδέες για τη συνέχεια</h2>
+      <ul class="ideas">
+        <li>Οδηγός Ethernet, για να σερβίρει ο ίδιος ο router αυτή τη σελίδα <span class="tag">μεγάλο</span></li>
+        <li>Οδηγός flash, για μόνιμη εγκατάσταση αντί για φόρτωση από τη RAM</li>
+        <li>Πραγματική ώρα: το ρολόι τρέχει σωστά, αλλά ξεκινά από την ώρα του συστήματος αρχείων</li>
+        <li>Διόρθωση κινητής υποδιαστολής (το φορτίο βγαίνει «nan»)</li>
+        <li>Κουμπί «φόρτωσε NetBSD» που κάνει όλη τη διαδρομή από το Linux</li>
+        <li>Γράφημα μνήμης και διεργασιών στον χρόνο</li>
+        <li>LED του router ως ουρά της γάτας 🐈</li>
+      </ul></div>
+  </section>
+  <footer>ᓚᘏᗢ &nbsp; Τοπικό dashboard · μιλάει με το router μόνο μέσω της σειριακής &nbsp; ᓚᘏᗢ</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const STEPS = [['bootloader','Bootloader'],['linux','Linux (ZTE)'],['loader','Φορτωτής'],['netbsd','NetBSD'],['shell','Root shell']];
+const MOODS = {
+  unknown:   ['sleep','Νιάου…','Ψάχνω να δω αν είναι κανείς εκεί.'],
+  silent:    ['sleep','Ζζζ…','Η σειριακή είναι ήσυχη. Ο router είναι σβηστός ή δεν απαντάει.'],
+  off:       ['sleep','Ζζζ…','Ο router κοιμάται.'],
+  bootloader:['wake','Τεντώνομαι…','Ξύπνησε ο bootloader της Realtek.'],
+  linux:     ['wake','Χασμουρητό','Τρέχει το εργοστασιακό Linux. Από εδώ φορτώνεται το NetBSD.'],
+  loader:    ['alert','Έτοιμη για άλμα!','Ο φορτωτής μεταφέρει και αποσυμπιέζει τον kernel.'],
+  netbsd:    ['alert','Κάτι κινείται…','Ξεκινάει ο kernel του NetBSD.'],
+  shell:     ['happy','Γουρ γουρ ♥','Root shell στο NetBSD. Ο router είναι δικός σου.'],
+  trouble:   ['puff','ΦΣΣΣΤ!','Ο kernel ανέφερε πρόβλημα.']
+};
+const QUICK = ['ls -l /','ps -ax','df -k','mount','dmesg','sysctl hw','cat /kern/version','date'];
+let next = 0, lastStage = null, autoscroll = true;
+
+$('path').replaceChildren(...STEPS.map(([k, t], i) => {
+  const d = document.createElement('div'); d.className = 'step'; d.dataset.k = k;
+  const paw = document.createElement('span'); paw.className = 'paw'; paw.textContent = '🐾';
+  const n = document.createElement('div'); n.className = 'n'; n.textContent = 'Βήμα ' + (i + 1);
+  const tt = document.createElement('div'); tt.className = 't'; tt.textContent = t;
+  d.append(paw, n, tt); return d;
+}));
+$('quick').replaceChildren(...QUICK.map(c => {
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = c;
+  b.onclick = () => send(c, true); return b;
+}));
+
+const post = (url, body) => fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+function send(text, enter) { post('/api/send', {text, enter}); autoscroll = true; }
+$('cmdForm').onsubmit = e => { e.preventDefault(); send($('cmdInput').value, true); $('cmdInput').value = ''; };
+$('refreshBtn').onclick = () => post('/api/refresh', {});
+$('rebootBtn').onclick = () => { if ($('rebootBtn').disabled) return; if (confirm('Να σταλεί «reboot» στο router; Θα γυρίσει στο εργοστασιακό firmware.')) send('reboot', true); };
+$('themeBtn').onclick = () => {
+  const r = document.documentElement, dark = getComputedStyle(r).getPropertyValue('--bg').trim() === '#191513';
+  r.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('theme', r.dataset.theme); } catch (e) {}
+};
+try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+const con = $('console');
+con.onscroll = () => { autoscroll = con.scrollTop + con.clientHeight >= con.scrollHeight - 30; };
+
+const fmtDur = s => { const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return (d ? d + 'η ' : '') + (h ? h + 'ω ' : '') + m + 'λ ' + (s % 60) + 'δ'; };
+const mb = kb => (kb / 1024).toFixed(1) + ' MB';
+const set = (id, v) => { $(id).textContent = (v === undefined || v === null || v === '') ? '—' : v; };
+
+function appendLog(text) {
+  if (!text) return;
+  // keep printable text; the router sends CR LF and the odd control byte
+  con.append(text.replace(/\r/g, '').replace(/[^\n\t\x20-\x7e]/g, ''));
+  if (con.textContent.length > 400000) con.textContent = con.textContent.slice(-250000);
+  if (autoscroll) con.scrollTop = con.scrollHeight;
+}
+
+function render(s) {
+  $('serialDot').className = 'dot ' + (s.serial_ok ? 'good' : 'bad');
+  set('serialText', s.serial_ok ? 'σειριακή ανοιχτή' : 'σειριακή κλειστή');
+  const key = s.trouble && s.stage !== 'shell' ? 'trouble' : (s.stage in MOODS ? s.stage : 'unknown');
+  const [mood, title, line] = MOODS[key];
+  $('hero').dataset.mood = mood; set('catTitle', title);
+  set('catLine', key === 'trouble' ? line + ' «' + s.trouble + '»' : line);
+  $('stageDot').className = 'dot ' + (key === 'shell' ? 'good' : key === 'trouble' ? 'bad' : key === 'silent' || key === 'unknown' ? '' : 'warn');
+  set('stageText', {shell: 'root shell', netbsd: 'εκκίνηση NetBSD', loader: 'φορτωτής', linux: 'Linux', bootloader: 'bootloader',
+    silent: 'σιωπή', unknown: 'άγνωστο', trouble: 'πρόβλημα'}[key]);
+  const idx = STEPS.findIndex(x => x[0] === s.stage);
+  document.querySelectorAll('.step').forEach((el, i) => {
+    el.classList.toggle('done', idx > i || (idx === i && s.stage === 'shell'));
+    el.classList.toggle('now', idx === i && s.stage !== 'shell');
+  });
+  // Anywhere else the text would be typed at a login prompt or into a dead kernel.
+  const canReboot = s.stage === 'shell';
+  $('rebootBtn').disabled = !canReboot;
+  $('rebootBtn').title = canReboot ? '' : 'Δουλεύει μόνο όταν τρέχει shell του NetBSD';
+  set('rebootNote', canReboot ? 'Η επανεκκίνηση γυρίζει στο εργοστασιακό firmware· το NetBSD φορτώνεται ξανά από εκεί.'
+    : 'Η επανεκκίνηση από εδώ δουλεύει μόνο όταν τρέχει shell του NetBSD. Τώρα γράψε reboot στο telnet ή βγάλε το ρεύμα.');
+  const i = s.info || {};
+  set('iModel', i.model); set('iOs', i.ostype ? i.ostype + ' ' + i.osrelease : ''); set('iArch', i.arch); set('iRoot', i.root);
+  set('iKernel', i.kernel || ''); set('iCpu', i.cpu); set('iIc', i.icache); set('iDc', i.dcache); set('iTimer', i.timer);
+  set('iUp', i.uptime !== undefined ? fmtDur(i.uptime) : '');
+  if (i.avail_kb) { set('iMemAvail', mb(i.avail_kb)); set('iMemTotal', 'από ' + mb(i.total_kb || 32768));
+    $('iMemBar').style.width = (100 * i.avail_kb / (i.total_kb || 32768)).toFixed(0) + '%'; }
+  else { set('iMemAvail', i.physmem ? mb(i.physmem / 1024) : ''); set('iMemTotal', i.physmem ? 'συνολικά' : ''); $('iMemBar').style.width = '0'; }
+  if (i.disk) { set('iDiskUsed', mb(i.disk.used)); set('iDiskTotal', 'από ' + mb(i.disk.total) + ' · ' + i.disk.cap);
+    $('iDiskBar').style.width = i.disk.cap; } else { set('iDiskUsed', ''); set('iDiskTotal', ''); $('iDiskBar').style.width = '0'; }
+  const procs = i.procs || [];
+  set('iProcN', i.procs ? procs.length : '');
+  set('iAge', s.info_age === null ? 'Χωρίς στοιχεία ακόμα.' : 'Τελευταία ανάγνωση πριν από ' + s.info_age + ' δευτ.');
+  const rows = procs.map(p => { const tr = document.createElement('tr');
+    [[p.pid, 'num'], [p.stat, 'num'], [p.time, 'num'], [p.cmd, '']].forEach(([v, c]) => { const td = document.createElement('td'); td.className = c; td.textContent = v; tr.append(td); });
+    return tr; });
+  if (!rows.length) { const tr = document.createElement('tr'), td = document.createElement('td'); td.colSpan = 4; td.className = 'note';
+    td.textContent = s.stage === 'shell' ? 'Διαβάζω…' : 'Χρειάζεται shell του NetBSD.'; tr.append(td); rows.push(tr); }
+  $('procs').replaceChildren(...rows);
+  if (lastStage !== s.stage) { lastStage = s.stage; document.title = 'H108N · ' + $('stageText').textContent; }
+}
+
+async function tick() {
+  try {
+    const r = await fetch('/api/poll?since=' + next); const s = await r.json();
+    appendLog(s.log); next = s.next; render(s);
+  } catch (e) {
+    $('serialDot').className = 'dot bad'; set('serialText', 'ο server δεν απαντάει');
+  }
+  setTimeout(tick, 800);
+}
+tick();
+</script>
+</body>
+</html>

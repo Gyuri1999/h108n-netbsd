@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>H108N Panel</title>
+<style>
+:root{--bg:#f6f1ea;--panel:#fffdf9;--ink:#2b2420;--muted:#7a6d63;--line:#e6dccf;--accent:#e07a3f;--soft:#fbe6d8;
+--good:#3f9b6b;--bad:#c8463c;--fur:#f0a15c;--furd:#c9743a;--belly:#fde9d2;--nose:#d9566b;--eye:#2b2420}
+@media (prefers-color-scheme:dark){:root{--bg:#191513;--panel:#231d1a;--ink:#f3e9de;--muted:#a8998c;--line:#3a302a;
+--accent:#f0935a;--soft:#3b2a20;--good:#5fc08c;--bad:#ee6f63;--fur:#e89b5a;--furd:#b9652f;--belly:#f6dcc0;--eye:#1b1512}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1020px;margin:0 auto;padding:18px 16px 40px}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+h1{font-size:20px;margin:0}h1 small{color:var(--muted);font-weight:500;font-size:14px;margin-left:6px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px}
+.sp{flex:1}.pill{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}.dot.good{background:var(--good)}.dot.bad{background:var(--bad)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;min-width:0}
+.hero{display:grid;grid-template-columns:170px 1fr;gap:16px;align-items:center}
+.cat{width:100%;max-width:170px;display:block;margin:0 auto;overflow:visible}
+.cat .fur{fill:var(--fur)}.cat .dark{fill:var(--furd)}.cat .belly{fill:var(--belly)}.cat .nose{fill:var(--nose)}
+.cat .ink{stroke:var(--eye);fill:none;stroke-width:3.2;stroke-linecap:round}.cat .pupil{fill:var(--eye)}.cat .white{fill:#fff}
+.cat .whisk{stroke:var(--eye);stroke-width:1.6;stroke-linecap:round;opacity:.55}
+.cat .tail{fill:none;stroke:var(--furd);stroke-width:15;stroke-linecap:round;transform-origin:196px 196px;animation:wag 3s ease-in-out infinite}
+.cat .eyes>g,.cat .extra{display:none}
+@keyframes wag{0%,100%{transform:rotate(0)}50%{transform:rotate(13deg)}}
+@keyframes fl{0%{opacity:0;transform:translateY(6px)}30%{opacity:1}100%{opacity:0;transform:translateY(-16px)}}
+[data-mood=happy] .smile,[data-mood=happy] .hearts,[data-mood=sleep] .closed,[data-mood=sleep] .zzz,[data-mood=hunt] .open,[data-mood=hunt] .paws{display:block}
+[data-mood=hunt] .tail{animation-duration:.8s}
+.extra text{font:700 22px sans-serif;fill:var(--accent);animation:fl 2.6s ease-out infinite}.extra text:nth-child(2){animation-delay:.9s}
+@media (prefers-reduced-motion:reduce){.cat *{animation:none!important}}
+.bubble{background:var(--soft);border-radius:18px;padding:14px 18px}.bubble b{display:block;font-size:20px}.bubble span{color:var(--muted);font-size:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px;margin:0}.kv dt{color:var(--muted)}.kv dd{margin:0;text-align:right;overflow-wrap:anywhere}
+.big{font-size:26px;font-weight:700;line-height:1.15;overflow-wrap:anywhere}.note{color:var(--muted);font-size:13px;margin:8px 0 0}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+td.m{font-family:ui-monospace,Menlo,monospace;font-size:13px}td.r{text-align:right;white-space:nowrap}
+.scroll{overflow-x:auto}
+form .row{display:grid;grid-template-columns:190px 1fr;gap:10px;align-items:center;margin-bottom:10px}
+label{color:var(--muted);font-size:14px}
+input[type=text],input[type=password],select{width:100%;font:inherit;padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+button{font:inherit;color:#fff;background:var(--accent);border:1px solid var(--accent);border-radius:10px;padding:7px 14px;cursor:pointer}
+button.x{background:none;color:var(--bad);border-color:var(--line);padding:2px 9px}
+button:disabled{opacity:.5;cursor:not-allowed}
+.inline{display:flex;gap:8px}.inline input{flex:1;min-width:0}
+.msg{margin-top:8px;font-size:14px;min-height:20px}.msg.ok{color:var(--good)}.msg.err{color:var(--bad)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 4px 3px 10px;border-radius:999px;background:var(--soft);font:13px ui-monospace,Menlo,monospace}
+footer{text-align:center;color:var(--muted);font-size:13px;margin-top:18px}
+@media (max-width:760px){.hero,.grid,form .row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><h1>H108N <small>το δικό σου panel</small></h1><span class="sp"></span>
+<span class="pill"><span class="dot" id="dot"></span><span id="state">σύνδεση…</span></span></header>
+
+<section class="panel hero" id="hero" data-mood="sleep">
+<svg class="cat" viewBox="0 0 260 260" role="img" aria-label="Η γάτα του router">
+<path class="tail" d="M196 196 C 236 196, 244 150, 222 132"/>
+<ellipse class="fur" cx="130" cy="200" rx="74" ry="46"/><ellipse class="belly" cx="130" cy="210" rx="44" ry="28"/>
+<path class="fur" d="M72 92 L66 34 L112 66 Z"/><path class="fur" d="M188 92 L194 34 L148 66 Z"/>
+<path class="belly" d="M80 74 L77 48 L99 64 Z"/><path class="belly" d="M180 74 L183 48 L161 64 Z"/>
+<circle class="fur" cx="130" cy="112" r="66"/><path class="dark" d="M118 50 q12 14 24 0 q-6 22 -12 22 q-6 0 -12 -22z"/>
+<ellipse class="belly" cx="130" cy="138" rx="30" ry="22"/>
+<g class="eyes">
+<g class="closed"><path class="ink" d="M90 108 q12 9 24 0"/><path class="ink" d="M146 108 q12 9 24 0"/></g>
+<g class="open"><ellipse class="white" cx="102" cy="106" rx="13" ry="14"/><ellipse class="white" cx="158" cy="106" rx="13" ry="14"/><ellipse class="pupil" cx="102" cy="106" rx="5" ry="11"/><ellipse class="pupil" cx="158" cy="106" rx="5" ry="11"/></g>
+<g class="smile"><path class="ink" d="M90 110 q12 -13 24 0"/><path class="ink" d="M146 110 q12 -13 24 0"/></g>
+</g>
+<path class="nose" d="M123 128 h14 l-7 8z"/><path class="ink" d="M130 136 v5 M130 141 q-7 7 -13 1 M130 141 q7 7 13 1" style="stroke-width:2.4"/>
+<path class="whisk" d="M96 132 H58 M96 140 L60 148 M164 132 H202 M164 140 L200 148"/>
+<ellipse class="belly" cx="98" cy="240" rx="18" ry="10"/><ellipse class="belly" cx="162" cy="240" rx="18" ry="10"/>
+<g class="extra zzz"><text x="196" y="74">z</text><text x="214" y="50">Z</text></g>
+<g class="extra hearts"><text x="200" y="70">♥</text><text x="34" y="64">♥</text></g>
+<g class="extra paws"><text x="204" y="72">🐾</text><text x="22" y="60">🐾</text></g>
+</svg>
+<div class="bubble"><b id="ct">Νιάου…</b><span id="cl">Ρωτάω το router πώς είναι.</span></div>
+</section>
+
+<div class="grid">
+<section class="panel"><h2>WiFi</h2><div class="big" id="ssid">—</div>
+<dl class="kv" style="margin-top:10px"><dt>Κατάσταση</dt><dd id="wEn">—</dd><dt>Κανάλι</dt><dd id="wCh">—</dd>
+<dt>Κρυφό όνομα</dt><dd id="wHid">—</dd><dt>Μέγιστοι χρήστες</dt><dd id="wMax">—</dd><dt>Επιπλέον δίκτυα</dt><dd id="wExtra">—</dd></dl>
+<p class="note">Το εργαλείο της ZTE κρύβει το όνομα και τον κωδικό του δικτύου.</p></section>
+<section class="panel"><h2>Σύστημα</h2><div class="big" id="up">—</div>
+<dl class="kv" style="margin-top:10px"><dt>Μνήμη ελεύθερη</dt><dd id="mem">—</dd><dt>Φορτίο</dt><dd id="load">—</dd><dt>Kernel</dt><dd id="ker">—</dd></dl>
+<p class="note">Εργοστασιακό Linux της ZTE· το panel και οι λίστες του ζουν στη RAM.</p></section>
+</div>
+
+<section class="panel"><h2>Κωδικός panel</h2>
+<div class="row" style="display:grid;grid-template-columns:190px 1fr;gap:10px;align-items:center">
+<label for="key">Για κάθε αλλαγή</label><input type="password" id="key" autocomplete="off" placeholder="ο κωδικός από το αρχείο /var/h108panel.key"></div>
+<p class="note" id="keynote"></p></section>
+
+<section class="panel"><h2>Ρόλος: δεύτερο router</h2>
+<div class="big" id="ready" style="font-size:20px">—</div>
+<dl class="kv" style="margin-top:10px"><dt>DHCP server</dt><dd id="dhcpSt">—</dd><dt>Εύρος που μοιράζει</dt><dd id="dhcpRange">—</dd>
+<dt>Προώθηση DNS</dt><dd id="upSt">—</dd></dl>
+<div class="inline" style="margin-top:12px;flex-wrap:wrap"><button type="button" id="dhcpBtn">—</button></div>
+<form id="fu" class="inline" style="margin-top:10px"><input type="text" id="upIp" autocomplete="off" spellcheck="false" inputmode="decimal" placeholder="διεύθυνση του κύριου router, π.χ. 192.168.1.1">
+<button type="submit" id="upSet">Όρισε προώθηση</button><button type="button" class="x" id="upOff" style="padding:7px 12px">Σταμάτα</button></form>
+<div class="msg" id="nmsg"></div>
+<p class="note">Πριν μπει στο ίδιο δίκτυο με το κύριο router, ο DHCP εδώ πρέπει να είναι κλειστός, αλλιώς δύο router θα μοιράζουν διευθύνσεις. Ο διακόπτης DHCP γράφεται στις μόνιμες ρυθμίσεις και μπορεί να θέλει επανεκκίνηση για να ισχύσει. Η προώθηση DNS ζει στη RAM.</p></section>
+
+<section class="panel"><h2>Φίλτρο DNS</h2>
+<div class="big"><span id="nblk">0</span> <span style="font-size:14px;font-weight:500;color:var(--muted)">ονόματα μπλοκαρισμένα</span></div>
+<form id="fd" class="inline" style="margin-top:10px"><input type="text" id="dname" autocomplete="off" spellcheck="false" placeholder="π.χ. ads.example.com">
+<button type="submit" id="dadd">Μπλόκαρε</button></form>
+<div class="chips" id="chips"></div><div class="msg" id="dmsg"></div>
+<p class="note">Το router απαντάει 0.0.0.0 για αυτά τα ονόματα, σε όσες συσκευές το χρησιμοποιούν ως DNS. Μπλοκάρεται το ακριβές όνομα, όχι τα υπο-ονόματά του.</p></section>
+
+<section class="panel"><h2>Συσκευές</h2><div class="scroll"><table><thead><tr><th>Όνομα</th><th>IP</th><th>MAC</th><th>Θύρα</th></tr></thead><tbody id="devs"></tbody></table></div></section>
+
+<section class="panel"><h2>Κίνηση δικτύου</h2><div class="scroll"><table><thead><tr><th>Διεπαφή</th><th style="text-align:right">Λήψη</th><th style="text-align:right">Αποστολή</th><th style="text-align:right">Σύνολο ↓ / ↑</th></tr></thead><tbody id="traf"></tbody></table></div>
+<p class="note">Ταχύτητα ανάμεσα σε δύο διαδοχικές μετρήσεις. Εμφανίζονται μόνο όσες διεπαφές έχουν κίνηση.</p></section>
+
+<section class="panel"><h2>Ρυθμίσεις WiFi</h2>
+<form id="f">
+<div class="row"><label for="enable">WiFi ενεργό</label><div><input type="checkbox" id="enable"></div></div>
+<div class="row"><label for="ssid_in">Όνομα δικτύου</label><input type="text" id="ssid_in" maxlength="32" autocomplete="off" placeholder="άφησέ το κενό για να μην αλλάξει"></div>
+<div class="row"><label for="hidden">Κρυφό όνομα</label><div><input type="checkbox" id="hidden"></div></div>
+<div class="row"><label for="autochan">Αυτόματο κανάλι</label><div><input type="checkbox" id="autochan"></div></div>
+<div class="row"><label for="channel">Κανάλι</label><select id="channel"></select></div>
+<div class="row"><label for="maxusers">Μέγιστοι χρήστες</label><select id="maxusers"></select></div>
+<div class="row"><label for="wifipass">Νέος κωδικός WiFi</label><input type="password" id="wifipass" maxlength="63" autocomplete="new-password" placeholder="άφησέ το κενό για να μην αλλάξει"></div>
+<button type="submit" id="save">Αποθήκευση αλλαγών</button><div class="msg" id="msg"></div>
+<p class="note">Οι αλλαγές WiFi γράφονται στις μόνιμες ρυθμίσεις του router, όπως από το εργοστασιακό UI. Μπορεί να χρειαστεί επανεκκίνηση για να εφαρμοστούν.</p>
+</form></section>
+<footer>ᓚᘏᗢ &nbsp; H108N panel &nbsp; ᓚᘏᗢ</footer>
+</div>
+<script>
+var $=function(i){return document.getElementById(i)},cur=null,dirty=false,prev=null,prevT=0,writable=false,dhcpOn=null;
+function set(i,v){$(i).textContent=(v===undefined||v===null||v==='')?'—':v}
+function masked(v){return !v||/^\*+$/.test(v)}
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e}
+function opt(sel,a,b){for(var i=a;i<=b;i++){var o=el('option','',i);o.value=i;sel.appendChild(o)}}
+opt($('channel'),1,13);opt($('maxusers'),1,32);
+function dur(s){s=Math.floor(s);var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return (d?d+'η ':'')+(h?h+'ω ':'')+m+'λ '+(s%60)+'δ'}
+function bytes(n){return n>=1048576?(n/1048576).toFixed(1)+' MB':n>=1024?(n/1024).toFixed(0)+' KB':n+' B'}
+function rate(b){return b>=1048576?(b/1048576).toFixed(2)+' MB/s':b>=1024?(b/1024).toFixed(1)+' KB/s':Math.round(b)+' B/s'}
+function mood(m,t,l){$('hero').dataset.mood=m;set('ct',t);set('cl',l)}
+function fill(w,b){$('enable').checked=w.Enable==='1';$('ssid_in').value=masked(w.ESSID)?'':w.ESSID;$('hidden').checked=w.ESSIDHideEnable==='1';
+ $('autochan').checked=b.AutoChannelEnabled==='1';$('channel').value=b.Channel;$('maxusers').value=w.MaxUserNum;$('channel').disabled=$('autochan').checked}
+function netdev(t){var r={};(t||'').split('\n').forEach(function(l){var m=/^\s*([A-Za-z0-9]+):\s*(.*)$/.exec(l);if(!m)return;var f=m[2].trim().split(/\s+/);
+ if(f.length>=9&&/^\d+$/.test(f[0]))r[m[1]]={rx:+f[0],tx:+f[8]}});return r}
+function show(s){
+ var w=(s.WLANCfg||[])[0]||{},b=(s.WLANBase||[])[0]||{};cur={w:w,b:b};writable=!!s.writable;
+ $('dot').className='dot good';set('state',s.writable?'συνδεδεμένο':'μόνο ανάγνωση');
+ $('keynote').textContent=s.writable?'':'Το panel ξεκίνησε χωρίς αρχείο κωδικού, οπότε δεν δέχεται αλλαγές.';
+ set('ssid',masked(w.ESSID)?'(όνομα κρυφό)':w.ESSID);set('wEn',w.Enable==='1'?'ενεργό':'κλειστό');
+ set('wCh',b.Channel?(b.Channel+(b.AutoChannelEnabled==='1'?' (αυτόματο)':'')):'');
+ set('wHid',w.ESSIDHideEnable==='1'?'ναι':'όχι');set('wMax',w.MaxUserNum);
+ set('wExtra',(s.WLANCfg||[]).slice(1).filter(function(r){return r.Enable==='1'}).length+' ενεργά');
+ set('up',s.uptime?dur(parseFloat(s.uptime)):'');
+ var mt=/MemTotal:\s+(\d+)/.exec(s.meminfo||''),mf=/MemFree:\s+(\d+)/.exec(s.meminfo||'');
+ set('mem',mt&&mf?(mf[1]/1024).toFixed(1)+' από '+(mt[1]/1024).toFixed(1)+' MB':'');
+ set('load',(s.loadavg||'').split(' ').slice(0,3).join('  '));
+ var kv=/Linux version (\S+)/.exec(s.version||'');set('ker',kv?'Linux '+kv[1]:'');
+ if(!dirty)fill(w,b);
+ $('save').disabled=$('dadd').disabled=$('dhcpBtn').disabled=$('upSet').disabled=$('upOff').disabled=!s.writable;
+ var d=(s.DHCPSHostCfg||[])[0]||{},up=(s.upstream||'').trim();dhcpOn=d.ServerEnable===undefined?null:d.ServerEnable==='1';
+ set('dhcpSt',dhcpOn===null?'':(dhcpOn?'ανοιχτός':'κλειστός'));set('dhcpRange',d.MinAddress?d.MinAddress+' – '+d.MaxAddress:'');
+ set('upSt',up?'προς '+up:'καμία');$('dhcpBtn').textContent=dhcpOn?'Κλείσε τον DHCP':'Άνοιξε τον DHCP';
+ var todo=[];if(dhcpOn!==false)todo.push('κλείσε τον DHCP');if(!up)todo.push('όρισε προώθηση DNS');
+ set('ready',todo.length?'Όχι ακόμα για το κύριο δίκτυο: '+todo.join(' και ')+'.':'Έτοιμο να συνδεθεί στο κύριο router.');
+ $('ready').style.color=todo.length?'var(--bad)':'var(--good)';
+ var names=(s.blocklist||'').split('\n').filter(function(x){return x});set('nblk',names.length);
+ var chips=$('chips');chips.textContent='';names.forEach(function(n){var c=el('span','chip',n),x=el('button','x','×');x.type='button';x.title='Ξεμπλόκαρε';
+  x.disabled=!s.writable;x.onclick=function(){dns('del',n)};c.appendChild(x);chips.appendChild(c)});
+ var devs=$('devs');devs.textContent='';var hosts=s.DHCPSHostInfo||[];
+ hosts.forEach(function(h){var tr=el('tr');tr.appendChild(el('td','',h.HostName||'(χωρίς όνομα)'));tr.appendChild(el('td','m',h.IpAddr));tr.appendChild(el('td','m',h.MacAddr));tr.appendChild(el('td','',h.PhyPort));devs.appendChild(tr)});
+ if(!hosts.length){var tr=el('tr'),td=el('td','','Καμία συσκευή δεν έχει πάρει διεύθυνση από αυτό το router.');td.colSpan=4;td.style.color='var(--muted)';tr.appendChild(td);devs.appendChild(tr)}
+ var now=Date.now(),nd=netdev(s.netdev),tb=$('traf');tb.textContent='';
+ Object.keys(nd).forEach(function(k){var a=nd[k];if(!a.rx&&!a.tx)return;var dt=(now-prevT)/1000,p=prev&&prev[k],tr=el('tr');
+  tr.appendChild(el('td','m',k));tr.appendChild(el('td','r',p&&dt>0?rate(Math.max(0,a.rx-p.rx)/dt):'…'));tr.appendChild(el('td','r',p&&dt>0?rate(Math.max(0,a.tx-p.tx)/dt):'…'));
+  tr.appendChild(el('td','r',bytes(a.rx)+' / '+bytes(a.tx)));tb.appendChild(tr)});
+ prev=nd;prevT=now;
+ if(names.length)mood('hunt','Κυνηγάω!',names.length+' ονόματα μπλοκαρισμένα στο DNS.');
+ else if(w.Enable==='1')mood('happy','Γουρ γουρ ♥','Το WiFi εκπέμπει.');else mood('sleep','Ζζζ…','Το WiFi είναι κλειστό.');
+}
+function poll(){var x=new XMLHttpRequest();x.open('GET','/api/status');x.timeout=9000;
+ x.onload=function(){try{show(JSON.parse(x.responseText))}catch(e){fail()}};x.onerror=x.ontimeout=fail;x.send()}
+function fail(){$('dot').className='dot bad';set('state','χωρίς απάντηση');mood('sleep','Νιάου;','Το panel στο router δεν απαντάει.')}
+function post(url,body,done){var x=new XMLHttpRequest();x.open('POST',url);x.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
+ x.setRequestHeader('X-Panel-Key',$('key').value);x.setRequestHeader('X-Requested-With','h108panel');
+ x.onload=function(){var r={};try{r=JSON.parse(x.responseText)}catch(e){}done(x.status,r)};x.onerror=function(){done(0,{})};x.send(body)}
+function why(st,r){return st===401?'Λάθος κωδικός panel.':st===403?'Το panel είναι μόνο για ανάγνωση.':st===0?'Το router δεν απάντησε.':'Δεν έγινε ('+(r.error||st)+').'}
+function needkey(m){if($('key').value)return true;m.className='msg err';m.textContent='Γράψε πρώτα τον κωδικό του panel.';$('key').focus();return false}
+function dns(op,name){var m=$('dmsg');if(!needkey(m))return;post('/api/dns',op+'='+encodeURIComponent(name),function(st,r){
+ var v=r.results&&r.results[name.toLowerCase()];
+ if(st===200){m.className='msg ok';m.textContent=v==='added'?'Μπλοκαρίστηκε.':v==='removed'?'Ξεμπλοκαρίστηκε.':v==='already'?'Ήταν ήδη στη λίστα.':'Έγινε.';$('dname').value='';poll()}
+ else{m.className='msg err';m.textContent=v==='invalid'?'Αυτό δεν μοιάζει με όνομα (π.χ. ads.example.com).':v==='full'?'Η λίστα γέμισε.':why(st,r)}})}
+$('dhcpBtn').onclick=function(){var m=$('nmsg');if(dhcpOn===null||!needkey(m))return;var to=dhcpOn?'0':'1';
+ if(!confirm(dhcpOn?'Να κλείσει ο DHCP server; Οι συσκευές που παίρνουν διεύθυνση από αυτό το router θα χρειαστούν άλλον DHCP ή σταθερή διεύθυνση.':'Να ανοίξει ο DHCP server; Μην το κάνεις αν είναι στο ίδιο δίκτυο με άλλο router.'))return;
+ post('/api/set','dhcp='+to,function(st,r){if(st===200&&r.saved){m.className='msg ok';m.textContent='Αποθηκεύτηκε. Αν δεν ισχύσει αμέσως, θέλει επανεκκίνηση του router.';poll()}else{m.className='msg err';m.textContent=why(st,r)}})};
+function upstream(v){var m=$('nmsg');if(!needkey(m))return;post('/api/dns','upstream='+encodeURIComponent(v),function(st,r){var x=r.results&&r.results.upstream;
+ if(st===200){m.className='msg ok';m.textContent=x==='off'?'Η προώθηση σταμάτησε.':'Η προώθηση ορίστηκε.';$('upIp').value='';poll()}
+ else{m.className='msg err';m.textContent=x==='invalid'?'Αυτό δεν είναι διεύθυνση IP (π.χ. 192.168.1.1).':why(st,r)}})}
+$('fu').addEventListener('submit',function(e){e.preventDefault();var v=$('upIp').value.trim();if(v)upstream(v)});
+$('upOff').onclick=function(){upstream('off')};
+$('fd').addEventListener('submit',function(e){e.preventDefault();var n=$('dname').value.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'');if(n)dns('add',n)});
+$('f').addEventListener('input',function(){dirty=true;$('channel').disabled=$('autochan').checked});
+$('f').addEventListener('submit',function(e){e.preventDefault();if(!cur)return;
+ var w=cur.w,b=cur.b,p=[],add=function(k,v){p.push(k+'='+encodeURIComponent(v))},bit=function(i){return $(i).checked?'1':'0'};
+ if(bit('enable')!==w.Enable)add('enable',bit('enable'));
+ if($('ssid_in').value&&$('ssid_in').value!==w.ESSID)add('ssid',$('ssid_in').value);
+ if(bit('hidden')!==w.ESSIDHideEnable)add('hidden',bit('hidden'));
+ if(bit('autochan')!==b.AutoChannelEnabled)add('autochan',bit('autochan'));
+ if(!$('autochan').checked&&$('channel').value!==b.Channel)add('channel',$('channel').value);
+ if($('maxusers').value!==w.MaxUserNum)add('maxusers',$('maxusers').value);
+ if($('wifipass').value)add('wifipass',$('wifipass').value);
+ var m=$('msg');if(!p.length){m.className='msg';m.textContent='Δεν άλλαξες κάτι.';return}
+ if(!needkey(m))return;
+ if(!confirm('Να αποθηκευτούν '+p.length+' αλλαγές στις μόνιμες ρυθμίσεις του router;'))return;
+ post('/api/wifi',p.join('&'),function(st,r){
+  if(st===200&&r.saved){var bad=Object.keys(r.results).filter(function(k){return r.results[k]!=='set'});
+   m.className=bad.length?'msg err':'msg ok';m.textContent=bad.length?'Αποθηκεύτηκαν, εκτός από: '+bad.join(', '):'Αποθηκεύτηκαν.';$('wifipass').value='';dirty=false;poll()}
+  else{m.className='msg err';m.textContent=why(st,r)}})});
+poll();setInterval(poll,5000);
+</script>
+</body>
+</html>
