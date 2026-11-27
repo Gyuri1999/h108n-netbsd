@@ -1,0 +1,49 @@
+name: build
+
+# Cross-build the RTL8672 kernel from the Lexra fork and prove no forbidden
+# Lexra instruction (lwl/lwr/swl/swr) is in it. Uses build/build-all.sh.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout (loader, docs, build script)
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential git ca-certificates
+
+      - name: Resolve fork branch commit (for the tools cache key)
+        id: fork
+        run: echo "sha=$(git ls-remote https://github.com/Gyuri1999/src.git h108n-lexra | cut -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache cross toolchain
+        uses: actions/cache@v4
+        with:
+          path: nb/tools
+          key: nbtools-${{ runner.os }}-${{ steps.fork.outputs.sha }}
+          restore-keys: nbtools-${{ runner.os }}-
+
+      - name: Reproducible build (tools + RTL8672 kernel + checks)
+        env:
+          BRANCH: h108n-lexra
+          WORK: ${{ github.workspace }}/nb
+        run: sh build/build-all.sh
+
+      - name: Upload kernel
+        uses: actions/upload-artifact@v4
+        with:
+          name: netbsd-RTL8672
+          path: nb/obj/sys/arch/evbmips/compile/RTL8672/netbsd
+          if-no-files-found: error

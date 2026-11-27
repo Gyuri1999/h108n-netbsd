@@ -1,5 +1,7 @@
 # NetBSD on the ZTE ZXHN H108N (Realtek RTL8672, Lexra RLX5281)
 
+[![build](https://github.com/Gyuri1999/h108n-netbsd/actions/workflows/build.yml/badge.svg)](https://github.com/Gyuri1999/h108n-netbsd/actions/workflows/build.yml)
+
 A port of NetBSD 11 to the ZTE ZXHN H108N ADSL router, plus the tools that
 were needed to get there: a patched cross compiler, a boot loader that uses
 the router's own Linux, a serial dashboard, and a small web panel for the
@@ -86,7 +88,11 @@ computer that can build NetBSD (Linux, macOS or a BSD).
    [docs/flash-backup.md](docs/flash-backup.md).
 2. **Wire the serial console.** [docs/serial-console.md](docs/serial-console.md).
 3. **Build** the tools, kernel, ramdisk and loader module.
-   [docs/building.md](docs/building.md).
+   [docs/building.md](docs/building.md) for the steps by hand, or one command
+   for the whole thing: [`build/`](build/) (`sh build/build-all.sh`, or Docker).
+   The NetBSD changes live as commits on
+   [`Gyuri1999/src` @ `h108n-lexra`](https://github.com/Gyuri1999/src/tree/h108n-lexra);
+   CI rebuilds the kernel on every push.
 4. **Boot** it from the router's Linux shell:
 
    ```sh
