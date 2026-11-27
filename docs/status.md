@@ -24,7 +24,9 @@ that the next occurrence reports the faulting address and registers.
 
 **Floating point.** `sysctl vm.loadavg` prints `nan nan nan`. The board has
 no FPU and the kernel emulates floating point, so something on that path
-gives wrong results.
+gives wrong results. Narrowed on hardware to the runtime `cvt.d.w`
+(int→double) emulation — constants are fine, the conversion is not. Full
+investigation and how to resume: [fp-bug-investigation.md](fp-bug-investigation.md).
 
 **No real-time clock.** Time starts from the file system's time stamp.
 
