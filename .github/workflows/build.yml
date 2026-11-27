@@ -13,7 +13,10 @@ permissions:
 
 jobs:
   kernel:
-    runs-on: ubuntu-latest
+    # NetBSD 11's in-tree binutils/gcc don't build with very new host GCC
+    # (Ubuntu 24.04 ships GCC 14: "static_assert" errors in binutils). Pin to
+    # 22.04 (GCC 11), which cross-builds the NetBSD-11 tools cleanly.
+    runs-on: ubuntu-22.04
     timeout-minutes: 180
     steps:
       - name: Checkout (loader, docs, build script)
