@@ -44,6 +44,28 @@ jobs:
           WORK: ${{ github.workspace }}/nb
         run: sh build/build-all.sh
 
+      - name: Diagnose soft-float (libgcc) for forbidden Lexra instructions
+        run: |
+          set -eu
+          objd=nb/tools/bin/mipseb--netbsd-objdump
+          tab=$(printf '\t')
+          found=0
+          for lg in $(find nb -name 'libgcc*.a' 2>/dev/null); do
+            n=$("$objd" -d "$lg" | grep -c -E "${tab}(lwl|lwr|swl|swr)${tab}" || true)
+            echo "libgcc forbidden-insn count: $n   <- $lg"
+            found=$((found + n))
+          done
+          echo "=== soft-float routines in libgcc (should be lwl/lwr/swl/swr free) ==="
+          lg=$(find nb -name 'libgcc.a' | head -1)
+          for sym in __divdf3 __floatsidf __muldf3 __fixdfsi __adddf3; do
+            c=$("$objd" -d "$lg" 2>/dev/null \
+                | awk -v s="<$sym>:" '$0 ~ s{p=1} p&&/^$/{p=0} p' \
+                | grep -c -E "${tab}(lwl|lwr|swl|swr)${tab}" || true)
+            echo "  $sym: $c forbidden"
+          done
+          echo "TOTAL forbidden instructions in libgcc: $found"
+          echo "libgcc_forbidden=$found" >> "$GITHUB_OUTPUT" 2>/dev/null || true
+
       - name: Upload kernel
         uses: actions/upload-artifact@v4
         with:
