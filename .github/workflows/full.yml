@@ -1,0 +1,49 @@
+name: full
+
+# Full build: cross tools + Lexra userland + memory-disk ramdisk (with fptest)
+# + RTL8672_MD kernel + the loader module. Uploads loader/tftp/h108nb.ko.
+# Run it by hand from the Actions tab (or: gh workflow run full.yml).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  loader:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential git ca-certificates
+
+      - name: Resolve fork branch commit (tools cache key)
+        id: fork
+        run: echo "sha=$(git ls-remote https://github.com/Gyuri1999/src.git h108n-lexra | cut -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache cross toolchain
+        uses: actions/cache@v4
+        with:
+          path: nb/tools
+          key: nbtools-${{ runner.os }}-${{ steps.fork.outputs.sha }}
+          restore-keys: nbtools-${{ runner.os }}-
+
+      - name: Full build (userland + ramdisk + MD kernel + loader)
+        env:
+          BRANCH: h108n-lexra
+          WORK: ${{ github.workspace }}/nb
+          FULL: "1"
+          REPO: ${{ github.workspace }}
+        run: sh build/build-all.sh
+
+      - name: Upload loader module
+        uses: actions/upload-artifact@v4
+        with:
+          name: h108nb-ko
+          path: loader/tftp/h108nb.ko
+          if-no-files-found: error
